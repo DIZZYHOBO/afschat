@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureMessenger P2P</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #111b21;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            background: #222e35;
+            height: 100vh;
+            display: flex;
+            color: #e9edef;
+        }
+
+        .sidebar {
+            width: 400px;
+            background: #111b21;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #2a3942;
+            position: fixed;
+            height: 100vh;
+            left: -400px;
+            transition: left 0.3s ease;
+            z-index: 1000;
+        }
+
+        .sidebar.open {
+            left: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: #2a3942;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #3b4a54;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00d4aa, #00a084);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            margin-right: 12px;
+        }
+
+        .profile-info h3 {
+            font-size: 16px;
+            font-weight: 400;
+            margin-bottom: 2px;
+        }
+
+        .username {
+            font-size: 13px;
+            color: #8696a0;
+            font-family: monospace;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .username:hover {
+            background: rgba(134, 150, 160, 0.1);
+        }
+
+        .username-edit {
+            background: #3b4a54;
+            color: #e9edef;
+            border: 1px solid #4a5c66;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+            width: 100px;
+        }
+
+        .username-edit:focus {
+            outline: none;
+            border-color: #00d4aa;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .header-btn {
+            background: none;
+            border: none;
+            color: #8696a0;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .header-btn:hover {
+            background: rgba(134, 150, 160, 0.1);
+        }
+
+        .search-bar {
+            padding: 15px 20px;
+            background: #111b21;
+            border-bottom: 1px solid #2a3942;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 15px;
+            background: #2a3942;
+            border: none;
+            border-radius: 8px;
+            color: #e9edef;
+            font-size: 14px;
+        }
+
+        .search-input::placeholder {
+            color: #8696a0;
+        }
+
+        .search-input:focus {
+            outline: none;
+            background: #3b4a54;
+        }
+
+        .chats-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .chat-item {
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: background 0.15s;
+            border-bottom: 1px solid rgba(42, 57, 66, 0.5);
+            display: flex;
+            align-items: center;
+        }
+
+        .chat-item:hover {
+            background: #2a3942;
+        }
+
+        .chat-item.active {
+            background: #2a3942;
+        }
+
+        .chat-item.unread {
+            background: rgba(0, 212, 170, 0.05);
+        }
+
+        .chat-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            margin-right: 15px;
+            font-size: 18px;
+        }
+
+        .chat-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 3px;
+        }
+
+        .chat-name {
+            font-size: 16px;
+            font-weight: 400;
+            color: #e9edef;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-time {
+            font-size: 12px;
+            color: #8696a0;
+            white-space: nowrap;
+        }
+
+        .chat-preview {
+            font-size: 14px;
+            color: #8696a0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+        }
+
+        .chat-status {
+            margin-right: 5px;
+        }
+
+        .unread-badge {
+            background: #00d4aa;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .main-chat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #0b141a;
+            width: 100%;
+        }
+
+        .app-header {
+            background: #2a3942;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #3b4a54;
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            color: #e9edef;
+            cursor: pointer;
+            padding: 8px;
+            margin-right: 15px;
+            border-radius: 50%;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .menu-btn:hover {
+            background: rgba(134, 150, 160, 0.1);
+        }
+
+        .menu-icon {
+            width: 24px;
+            height: 18px;
+            position: relative;
+        }
+
+        .menu-icon span {
+            display: block;
+            position: absolute;
+            height: 3px;
+            width: 100%;
+            background: #e9edef;
+            border-radius: 2px;
+            opacity: 1;
+            left: 0;
+            transform: rotate(0deg);
+            transition: .25s ease-in-out;
+        }
+
+        .menu-icon span:nth-child(1) {
+            top: 0px;
+        }
+
+        .menu-icon span:nth-child(2) {
+            top: 7px;
+        }
+
+        .menu-icon span:nth-child(3) {
+            top: 14px;
+        }
+
+        .app-title {
+            font-size: 20px;
+            font-weight: 500;
+            color: #e9edef;
+        }
+
+        .chat-header-main {
+            padding: 15px 20px;
+            background: #2a3942;
+            border-bottom: 1px solid #3b4a54;
+            display: none;
+            align-items: center;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            color: #8696a0;
+            cursor: pointer;
+            padding: 8px;
+            margin-right: 10px;
+            border-radius: 50%;
+            display: none;
+        }
+
+        .contact-info {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+        .contact-status {
+            font-size: 13px;
+            color: #8696a0;
+            margin-top: 2px;
+        }
+
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.02)"/></svg>');
+            background-size: 30px 30px;
+        }
+
+        .message-group {
+            margin-bottom: 20px;
+        }
+
+        .message {
+            max-width: 65%;
+            margin-bottom: 5px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.sent {
+            margin-left: auto;
+            align-items: flex-end;
+        }
+
+        .message.received {
+            align-items: flex-start;
+        }
+
+        .message-bubble {
+            padding: 8px 12px;
+            border-radius: 8px;
+            word-wrap: break-word;
+            position: relative;
+            max-width: 100%;
+        }
+
+        .message.sent .message-bubble {
+            background: #005c4b;
+            color: #e9edef;
+            border-bottom-right-radius: 2px;
+        }
+
+        .message.received .message-bubble {
+            background: #202c33;
+            color: #e9edef;
+            border-bottom-left-radius: 2px;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: rgba(233, 237, 239, 0.6);
+            margin-top: 4px;
+            align-self: flex-end;
+            padding: 0 5px;
+        }
+
+        .message-input-area {
+            padding: 15px 20px;
+            background: #2a3942;
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
+
+        .message-input-container {
+            flex: 1;
+            background: #3b4a54;
+            border-radius: 25px;
+            padding: 8px 15px;
+            display: flex;
+            align-items: center;
+            min-height: 44px;
+        }
+
+        .message-input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: #e9edef;
+            font-size: 15px;
+            resize: none;
+            outline: none;
+            max-height: 100px;
+            line-height: 20px;
+        }
+
+        .message-input::placeholder {
+            color: #8696a0;
+        }
+
+        .send-button {
+            background: #00d4aa;
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: background 0.2s;
+        }
+
+        .send-button:hover {
+            background: #00a084;
+        }
+
+        .welcome-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            color: #8696a0;
+            padding: 40px;
+        }
+
+        .welcome-icon {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00d4aa, #00a084);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #2a3942;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+            color: #e9edef;
+        }
+
+        .modal-header {
+            padding: 20px 20px 10px;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .modal-body {
+            padding: 10px 20px 20px;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 12px;
+            background: #3b4a54;
+            border: 1px solid #4a5c66;
+            border-radius: 8px;
+            color: #e9edef;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+
+        .modal-input:focus {
+            outline: none;
+            border-color: #00d4aa;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .modal-btn.primary {
+            background: #00d4aa;
+            color: white;
+        }
+
+        .modal-btn.primary:hover {
+            background: #00a084;
+        }
+
+        .modal-btn.secondary {
+            background: #3b4a54;
+            color: #e9edef;
+        }
+
+        .modal-btn.secondary:hover {
+            background: #4a5c66;
+        }
+
+        .username-display {
+            background: #3b4a54;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+            font-family: monospace;
+            font-size: 16px;
+            color: #00d4aa;
+            border: 2px dashed #4a5c66;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #8696a0;
+            font-size: 14px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .status-online { background: #00d4aa; }
+        .status-offline { background: #8696a0; }
+
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-overlay.visible {
+            display: block;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+        
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="user-profile" onclick="showProfileModal()">
+                    <div class="avatar" id="userAvatar">U</div>
+                    <div class="profile-info">
+                        <h3 id="displayName">User</h3>
+                        <div class="username" id="myUsername" onclick="editUsername(event)">user0000</div>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="header-btn" onclick="showAddContactModal()" title="Add Contact">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                        </svg>
+                    </button>
+                    <button class="header-btn" onclick="showShareModal()" title="Share Username">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.50-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="search-bar">
+                <input type="text" class="search-input" placeholder="Search contacts..." id="searchInput" oninput="filterContacts()">
+            </div>
+
+            <div class="chats-list" id="chatsList">
+                <div class="empty-state">
+                    <div style="font-size: 48px; margin-bottom: 15px;">💬</div>
+                    <div>No contacts yet</div>
+                    <div style="margin-top: 5px; font-size: 12px;">Add a contact to start messaging</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-chat" id="mainChat">
+            <div class="app-header">
+                <button class="menu-btn" onclick="toggleSidebar()">
+                    <div class="menu-icon">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </button>
+                <div class="app-title">SecureMessenger</div>
+            </div>
+
+            <div class="chat-header-main" id="chatHeader">
+                <button class="back-btn" onclick="goBackToSidebar()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                    </svg>
+                </button>
+                <div class="contact-info">
+                    <div class="chat-avatar" id="currentChatAvatar">A</div>
+                    <div>
+                        <div class="chat-name" id="currentChatName">Contact</div>
+                        <div class="contact-status">
+                            <span class="status-indicator status-offline" id="contactStatus"></span>
+                            <span id="contactStatusText">offline</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="welcomeScreen" class="welcome-screen">
+                <div class="welcome-icon">🔒</div>
+                <h2 style="color: #e9edef; margin-bottom: 15px;">SecureMessenger P2P</h2>
+                <p>Send and receive messages securely with end-to-end encryption.</p>
+                <p style="margin-top: 15px; font-size: 14px;">Add a contact to start messaging.</p>
+            </div>
+
+            <div class="messages-area" id="messagesArea" style="display: none;"></div>
+
+            <div class="message-input-area" id="messageInputArea" style="display: none;">
+                <div class="message-input-container">
+                    <textarea class="message-input" id="messageInput" placeholder="Type a message" rows="1" onkeydown="handleKeyDown(event)" oninput="autoResize(this)"></textarea>
+                </div>
+                <button class="send-button" onclick="sendMessage()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div class="modal" id="profileModal">
+        <div class="modal-content">
+            <div class="modal-header">Your Profile</div>
+            <div class="modal-body">
+                <label>Display Name:</label>
+                <input type="text" class="modal-input" id="profileNameInput" maxlength="30">
+                
+                <label>Your Username (click to edit):</label>
+                <div class="username-display" id="profileUsername" onclick="editUsernameInProfile()" style="cursor: pointer;">user0000</div>
+                
+                <div class="modal-buttons">
+                    <button class="modal-btn primary" onclick="saveProfile()">Save</button>
+                    <button class="modal-btn secondary" onclick="closeModal('profileModal')">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Contact Modal -->
+    <div class="modal" id="addContactModal">
+        <div class="modal-content">
+            <div class="modal-header">Add Contact</div>
+            <div class="modal-body">
+                <label>Enter username (e.g. user1234):</label>
+                <input type="text" class="modal-input" id="contactUsernameInput" placeholder="user1234" maxlength="20">
+                
+                <label>Display Name (optional):</label>
+                <input type="text" class="modal-input" id="contactNameInput" placeholder="Friend's Name" maxlength="30">
+                
+                <div class="modal-buttons">
+                    <button class="modal-btn primary" onclick="addContact()">Add Contact</button>
+                    <button class="modal-btn secondary" onclick="closeModal('addContactModal')">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div class="modal" id="shareModal">
+        <div class="modal-content">
+            <div class="modal-header">Share Your Username</div>
+            <div class="modal-body">
+                <p>Share this username with others to let them add you:</p>
+                <div class="username-display" id="shareUsername">user0000</div>
+                
+                <div class="modal-buttons">
+                    <button class="modal-btn primary" onclick="copyUsername()">Copy Username</button>
+                    <button class="modal-btn secondary" onclick="closeModal('shareModal')">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PeerJS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.0/dist/peerjs.min.js"></script>
+
+    <script>
+        // App state
+        let peer = null;
+        let myUsername = null;
+        let myDisplayName = 'User';
+        let contacts = new Map();
+        let activeConnections = new Map();
+        let currentChatUsername = null;
+        let chatMessages = new Map();
+
+        // Initialize app
+        async function initApp() {
+            try {
+                // Load or generate username
+                myUsername = localStorage.getItem('myUsername');
+                if (!myUsername) {
+                    myUsername = generateRandomUsername('user');
+                    localStorage.setItem('myUsername', myUsername);
+                }
+
+                // Load display name
+                myDisplayName = localStorage.getItem('myDisplayName') || 'User';
+
+                // Update UI
+                updateProfileUI();
+
+                // Load saved data
+                loadContacts();
+                loadMessages();
+
+                // Initialize PeerJS
+                initPeer();
+
+                console.log('App initialized with username:', myUsername);
+            } catch (error) {
+                console.error('Failed to initialize app:', error);
+            }
+        }
+
+        // Initialize PeerJS connection
+        function initPeer() {
+            // Use username as peer ID for consistency
+            peer = new Peer(myUsername);
+
+            peer.on('open', function(id) {
+                console.log('Connected with peer ID:', id);
+                updateOnlineStatus(true);
+            });
+
+            peer.on('connection', function(conn) {
+                console.log('Incoming connection from:', conn.peer);
+                handleIncomingConnection(conn);
+            });
+
+            peer.on('error', function(err) {
+                console.error('PeerJS error:', err);
+                updateOnlineStatus(false);
+                
+                // Retry connection after a delay
+                setTimeout(() => {
+                    if (!peer.open) {
+                        initPeer();
+                    }
+                }, 5000);
+            });
+        }
+
+        // Handle incoming connections
+        function handleIncomingConnection(conn) {
+            const contactUsername = conn.peer;
+            
+            conn.on('open', function() {
+                console.log('Connection established with:', contactUsername);
+                activeConnections.set(contactUsername, conn);
+                updateContactStatus(contactUsername, true);
+                
+                // Auto-add contact if not exists
+                if (!contacts.has(contactUsername)) {
+                    const contact = {
+                        username: contactUsername,
+                        displayName: contactUsername,
+                        lastSeen: Date.now(),
+                        unreadCount: 0
+                    };
+                    contacts.set(contactUsername, contact);
+                    saveContacts();
+                    updateContactsList();
+                }
+            });
+
+            conn.on('data', function(data) {
+                handleIncomingMessage(data, contactUsername);
+            });
+
+            conn.on('close', function() {
+                console.log('Connection closed with:', contactUsername);
+                activeConnections.delete(contactUsername);
+                updateContactStatus(contactUsername, false);
+            });
+        }
+
+        // Connect to a contact
+        async function connectToContact(username) {
+            if (activeConnections.has(username)) {
+                return activeConnections.get(username);
+            }
+
+            try {
+                const conn = peer.connect(username);
+                
+                return new Promise((resolve, reject) => {
+                    conn.on('open', function() {
+                        console.log('Connected to:', username);
+                        activeConnections.set(username, conn);
+                        updateContactStatus(username, true);
+                        
+                        conn.on('data', function(data) {
+                            handleIncomingMessage(data, username);
+                        });
+                        
+                        conn.on('close', function() {
+                            console.log('Connection closed with:', username);
+                            activeConnections.delete(username);
+                            updateContactStatus(username, false);
+                        });
+                        
+                        resolve(conn);
+                    });
+                    
+                    conn.on('error', function(err) {
+                        console.error('Failed to connect to:', username, err);
+                        reject(err);
+                    });
+                });
+            } catch (error) {
+                console.error('Connection error:', error);
+                throw error;
+            }
+        }
+
+        // Send message
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message || !currentChatUsername) return;
+
+            try {
+                // Try to connect if not already connected
+                if (!activeConnections.has(currentChatUsername)) {
+                    await connectToContact(currentChatUsername);
+                }
+
+                const messageData = {
+                    type: 'message',
+                    text: message,
+                    timestamp: Date.now(),
+                    from: myUsername
+                };
+
+                // Send to contact
+                const conn = activeConnections.get(currentChatUsername);
+                if (conn && conn.open) {
+                    conn.send(messageData);
+                }
+
+                // Add to local chat
+                addMessageToChat(currentChatUsername, messageData, true);
+                
+                input.value = '';
+                autoResize(input);
+                
+            } catch (error) {
+                console.error('Failed to send message:', error);
+                alert('Failed to send message. The user might be offline.');
+            }
+        }
+
+        // Handle incoming messages
+        function handleIncomingMessage(data, fromUsername) {
+            if (data.type === 'message') {
+                addMessageToChat(fromUsername, data, false);
+                
+                // Update contact's last activity
+                const contact = contacts.get(fromUsername);
+                if (contact) {
+                    contact.lastSeen = Date.now();
+                    if (currentChatUsername !== fromUsername) {
+                        contact.unreadCount = (contact.unreadCount || 0) + 1;
+                    }
+                    saveContacts();
+                    updateContactsList();
+                }
+            }
+        }
+
+        // Add message to chat
+        function addMessageToChat(username, messageData, isSent) {
+            const chatKey = username;
+            if (!chatMessages.has(chatKey)) {
+                chatMessages.set(chatKey, []);
+            }
+            
+            const message = {
+                ...messageData,
+                isSent: isSent,
+                id: Date.now() + Math.random()
+            };
+            
+            chatMessages.get(chatKey).push(message);
+            saveMessages();
+            
+            if (currentChatUsername === username) {
+                displayMessage(message);
+            }
+            
+            // Update last message in contacts list
+            updateContactLastMessage(username, messageData.text);
+        }
+
+        // Display message in UI
+        function displayMessage(message) {
+            const messagesArea = document.getElementById('messagesArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${message.isSent ? 'sent' : 'received'}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            bubble.textContent = message.text;
+            
+            const time = document.createElement('div');
+            time.className = 'message-time';
+            time.textContent = new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+            
+            messageDiv.appendChild(bubble);
+            messageDiv.appendChild(time);
+            messagesArea.appendChild(messageDiv);
+            
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        }
+
+        // Open chat with contact
+        function openChat(username) {
+            currentChatUsername = username;
+            
+            const contact = contacts.get(username);
+            if (contact) {
+                // Clear unread count
+                contact.unreadCount = 0;
+                saveContacts();
+                updateContactsList();
+                
+                // Update header
+                document.getElementById('currentChatName').textContent = contact.displayName;
+                document.getElementById('currentChatAvatar').textContent = contact.displayName.charAt(0).toUpperCase();
+                
+                // Show chat interface
+                document.getElementById('welcomeScreen').style.display = 'none';
+                document.getElementById('chatHeader').style.display = 'flex';
+                document.getElementById('messagesArea').style.display = 'block';
+                document.getElementById('messageInputArea').style.display = 'flex';
+                
+                // Load and display messages
+                loadChatMessages(username);
+                
+                // Update contact status
+                updateContactStatus(username, activeConnections.has(username));
+                
+                // Try to connect
+                connectToContact(username).catch(err => {
+                    console.log('Could not connect to contact:', err);
+                });
+            }
+            
+            // Close sidebar after selecting a chat
+            closeSidebar();
+        }
+
+        // Load chat messages
+        function loadChatMessages(username) {
+            const messagesArea = document.getElementById('messagesArea');
+            messagesArea.innerHTML = '';
+            
+            const messages = chatMessages.get(username) || [];
+            messages.forEach(message => {
+                displayMessage(message);
+            });
+        }
+
+        // Username editing
+        function editUsername(event) {
+            event.stopPropagation(); // Prevent profile modal from opening
+            
+            const usernameDiv = document.getElementById('myUsername');
+            const currentUsername = usernameDiv.textContent;
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'username-edit';
+            input.value = currentUsername;
+            input.maxLength = 20;
+            
+            usernameDiv.style.display = 'none';
+            usernameDiv.parentNode.insertBefore(input, usernameDiv.nextSibling);
+            
+            input.focus();
+            input.select();
+            
+            function saveUsername() {
+                const newUsername = input.value.trim();
+                
+                // Validate username format
+                if (!newUsername.match(/^[a-zA-Z0-9_]{4,20}$/)) {
+                    alert('Username must be 4-20 characters (letters, numbers, underscore only)');
+                    input.focus();
+                    return;
+                }
+                
+                if (newUsername !== myUsername) {
+                    // Check if username is already taken by trying to connect
+                    checkUsernameAvailability(newUsername).then(available => {
+                        if (available || newUsername === myUsername) {
+                            updateUsername(newUsername);
+                            finishEdit();
+                        } else {
+                            alert('Username is already taken. Please choose a different one.');
+                            input.focus();
+                        }
+                    }).catch(() => {
+                        // If check fails, allow the change (might be offline)
+                        updateUsername(newUsername);
+                        finishEdit();
+                    });
+                } else {
+                    finishEdit();
+                }
+            }
+            
+            function finishEdit() {
+                input.remove();
+                usernameDiv.style.display = 'block';
+            }
+            
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    saveUsername();
+                } else if (e.key === 'Escape') {
+                    finishEdit();
+                }
+            });
+            
+            input.addEventListener('blur', saveUsername);
+        }
+
+        function editUsernameInProfile() {
+            const profileUsername = document.getElementById('profileUsername');
+            const currentUsername = myUsername;
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'modal-input';
+            input.value = currentUsername;
+            input.maxLength = 20;
+            input.placeholder = 'username1234';
+            
+            profileUsername.style.display = 'none';
+            profileUsername.parentNode.insertBefore(input, profileUsername.nextSibling);
+            
+            input.focus();
+            input.select();
+            
+            function saveProfileUsername() {
+                const newUsername = input.value.trim();
+                
+                if (!newUsername.match(/^[a-zA-Z0-9_]{4,20}$/)) {
+                    alert('Username must be 4-20 characters (letters, numbers, underscore only)');
+                    input.focus();
+                    return;
+                }
+                
+                if (newUsername !== myUsername) {
+                    checkUsernameAvailability(newUsername).then(available => {
+                        if (available || newUsername === myUsername) {
+                            updateUsername(newUsername);
+                            finishProfileEdit();
+                        } else {
+                            alert('Username is already taken. Please choose a different one.');
+                            input.focus();
+                        }
+                    }).catch(() => {
+                        updateUsername(newUsername);
+                        finishProfileEdit();
+                    });
+                } else {
+                    finishProfileEdit();
+                }
+            }
+            
+            function finishProfileEdit() {
+                input.remove();
+                profileUsername.style.display = 'block';
+            }
+            
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    saveProfileUsername();
+                } else if (e.key === 'Escape') {
+                    finishProfileEdit();
+                }
+            });
+            
+            input.addEventListener('blur', saveProfileUsername);
+        }
+
+        async function checkUsernameAvailability(username) {
+            return new Promise((resolve) => {
+                // Create a temporary peer to check if username is taken
+                const testPeer = new Peer(username + '_test_' + Math.random().toString(36).substr(2, 4));
+                
+                const timeout = setTimeout(() => {
+                    testPeer.destroy();
+                    resolve(true); // Assume available if no response
+                }, 3000);
+                
+                testPeer.on('open', function() {
+                    // Try to connect to the username
+                    const testConn = testPeer.connect(username);
+                    
+                    testConn.on('open', function() {
+                        clearTimeout(timeout);
+                        testConn.close();
+                        testPeer.destroy();
+                        resolve(false); // Username is taken
+                    });
+                    
+                    testConn.on('error', function() {
+                        clearTimeout(timeout);
+                        testPeer.destroy();
+                        resolve(true); // Username is available
+                    });
+                    
+                    // If no connection within 2 seconds, assume available
+                    setTimeout(() => {
+                        if (testConn.open === false) {
+                            clearTimeout(timeout);
+                            testPeer.destroy();
+                            resolve(true);
+                        }
+                    }, 2000);
+                });
+                
+                testPeer.on('error', function(err) {
+                    clearTimeout(timeout);
+                    console.log('Test peer error:', err);
+                    resolve(true); // Assume available on error
+                });
+            });
+        }
+
+        function updateUsername(newUsername) {
+            const oldUsername = myUsername;
+            myUsername = newUsername;
+            
+            // Close existing peer connection
+            if (peer) {
+                peer.destroy();
+            }
+            
+            // Save new username
+            localStorage.setItem('myUsername', myUsername);
+            
+            // Update UI
+            updateProfileUI();
+            
+            // Reinitialize peer with new username
+            initPeer();
+            
+            console.log('Username changed from', oldUsername, 'to', newUsername);
+        }
+
+        // Sidebar functions
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            if (sidebar.classList.contains('open')) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        }
+
+        function openSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            sidebar.classList.add('open');
+            overlay.classList.add('visible');
+        }
+
+        function closeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            sidebar.classList.remove('open');
+            overlay.classList.remove('visible');
+        }
+        function updateProfileUI() {
+            document.getElementById('myUsername').textContent = myUsername;
+            document.getElementById('displayName').textContent = myDisplayName;
+            document.getElementById('userAvatar').textContent = myDisplayName.charAt(0).toUpperCase();
+            document.getElementById('profileUsername').textContent = myUsername;
+            document.getElementById('shareUsername').textContent = myUsername;
+        }
+
+        function updateContactsList() {
+            const chatsList = document.getElementById('chatsList');
+            const contactsArray = Array.from(contacts.values());
+            
+            if (contactsArray.length === 0) {
+                chatsList.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 48px; margin-bottom: 15px;">💬</div>
+                        <div>No contacts yet</div>
+                        <div style="margin-top: 5px; font-size: 12px;">Add a contact to start messaging</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Sort by last activity
+            contactsArray.sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
+            
+            chatsList.innerHTML = '';
+            contactsArray.forEach(contact => {
+                const chatItem = createChatItem(contact);
+                chatsList.appendChild(chatItem);
+            });
+        }
+
+        function createChatItem(contact) {
+            const div = document.createElement('div');
+            div.className = `chat-item ${contact.unreadCount > 0 ? 'unread' : ''} ${currentChatUsername === contact.username ? 'active' : ''}`;
+            div.onclick = () => openChat(contact.username);
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'chat-avatar';
+            avatar.textContent = contact.displayName.charAt(0).toUpperCase();
+            
+            const info = document.createElement('div');
+            info.className = 'chat-info';
+            
+            const header = document.createElement('div');
+            header.className = 'chat-header';
+            
+            const name = document.createElement('div');
+            name.className = 'chat-name';
+            name.textContent = contact.displayName;
+            
+            const time = document.createElement('div');
+            time.className = 'chat-time';
+            if (contact.lastSeen) {
+                time.textContent = new Date(contact.lastSeen).toLocaleDateString();
+            }
+            
+            header.appendChild(name);
+            header.appendChild(time);
+            
+            const preview = document.createElement('div');
+            preview.className = 'chat-preview';
+            preview.textContent = contact.lastMessage || 'No messages yet';
+            
+            info.appendChild(header);
+            info.appendChild(preview);
+            
+            div.appendChild(avatar);
+            div.appendChild(info);
+            
+            if (contact.unreadCount > 0) {
+                const badge = document.createElement('div');
+                badge.className = 'unread-badge';
+                badge.textContent = contact.unreadCount;
+                div.appendChild(badge);
+            }
+            
+            return div;
+        }
+
+        function updateContactStatus(username, isOnline) {
+            if (currentChatUsername === username) {
+                const statusIndicator = document.getElementById('contactStatus');
+                const statusText = document.getElementById('contactStatusText');
+                
+                statusIndicator.className = `status-indicator ${isOnline ? 'status-online' : 'status-offline'}`;
+                statusText.textContent = isOnline ? 'online' : 'last seen recently';
+            }
+        }
+
+        function updateOnlineStatus(isOnline) {
+            // Could add a status indicator for self if needed
+            console.log('Online status:', isOnline);
+        }
+
+        function updateContactLastMessage(username, message) {
+            const contact = contacts.get(username);
+            if (contact) {
+                contact.lastMessage = message.length > 50 ? message.substring(0, 50) + '...' : message;
+                contact.lastSeen = Date.now();
+                saveContacts();
+                updateContactsList();
+            }
+        }
+
+        // Modal functions
+        function showProfileModal() {
+            document.getElementById('profileNameInput').value = myDisplayName;
+            document.getElementById('profileModal').style.display = 'flex';
+        }
+
+        function showAddContactModal() {
+            document.getElementById('contactUsernameInput').value = '';
+            document.getElementById('contactNameInput').value = '';
+            document.getElementById('addContactModal').style.display = 'flex';
+        }
+
+        function showShareModal() {
+            document.getElementById('shareModal').style.display = 'flex';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function saveProfile() {
+            const newName = document.getElementById('profileNameInput').value.trim();
+            if (newName) {
+                myDisplayName = newName;
+                localStorage.setItem('myDisplayName', myDisplayName);
+                updateProfileUI();
+            }
+            closeModal('profileModal');
+        }
+
+        function addContact() {
+            const username = document.getElementById('contactUsernameInput').value.trim();
+            const displayName = document.getElementById('contactNameInput').value.trim() || username;
+            
+            if (!username || !username.match(/^[a-zA-Z0-9_]{4,20}$/)) {
+                alert('Please enter a valid username (4-20 characters, letters/numbers/underscore only)');
+                return;
+            }
+            
+            if (username === myUsername) {
+                alert('You cannot add yourself as a contact');
+                return;
+            }
+            
+            if (contacts.has(username)) {
+                alert('Contact already exists');
+                return;
+            }
+            
+            const contact = {
+                username: username,
+                displayName: displayName,
+                lastSeen: null,
+                unreadCount: 0,
+                lastMessage: null
+            };
+            
+            contacts.set(username, contact);
+            saveContacts();
+            updateContactsList();
+            closeModal('addContactModal');
+        }
+
+        function copyUsername() {
+            navigator.clipboard.writeText(myUsername).then(() => {
+                alert('Username copied to clipboard!');
+            });
+        }
+
+        // Storage functions
+        function saveContacts() {
+            const contactsArray = Array.from(contacts.entries());
+            localStorage.setItem('contacts', JSON.stringify(contactsArray));
+        }
+
+        function loadContacts() {
+            const saved = localStorage.getItem('contacts');
+            if (saved) {
+                const contactsArray = JSON.parse(saved);
+                contacts = new Map(contactsArray);
+                updateContactsList();
+            }
+        }
+
+        function saveMessages() {
+            const messagesArray = Array.from(chatMessages.entries());
+            localStorage.setItem('chatMessages', JSON.stringify(messagesArray));
+        }
+
+        function loadMessages() {
+            const saved = localStorage.getItem('chatMessages');
+            if (saved) {
+                const messagesArray = JSON.parse(saved);
+                chatMessages = new Map(messagesArray);
+            }
+        }
+
+        // Utility functions
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
+        }
+
+        function filterContacts() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const chatItems = document.querySelectorAll('.chat-item');
+            
+            chatItems.forEach(item => {
+                const name = item.querySelector('.chat-name').textContent.toLowerCase();
+                if (name.includes(query)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function goBackToSidebar() {
+            openSidebar();
+        }
+
+        // Initialize app when page loads
+        window.addEventListener('load', initApp);
+
+        // Close modals when clicking outside
+        window.addEventListener('click', function(event) {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
