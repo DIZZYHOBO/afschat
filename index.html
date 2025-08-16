@@ -614,6 +614,34 @@
     </style>
 </head>
 <body>
+    <!-- First Time Setup Modal -->
+    <div class="first-time-modal" id="firstTimeModal">
+        <div class="first-time-content">
+            <div class="welcome-icon-large">🔒</div>
+            <h2 class="first-time-title">Welcome to SecureMessenger</h2>
+            <p class="first-time-subtitle">Choose your username to get started with secure P2P messaging</p>
+            
+            <div class="username-setup">
+                <label for="setupUsernameInput">Choose your username:</label>
+                <input 
+                    type="text" 
+                    id="setupUsernameInput" 
+                    class="username-setup-input" 
+                    placeholder="e.g. john, alice, gamer"
+                    maxlength="20"
+                    oninput="previewUsername()"
+                    onkeydown="handleSetupKeydown(event)"
+                >
+                <div class="username-preview" id="usernamePreview"></div>
+                <div class="error-message" id="setupError"></div>
+            </div>
+            
+            <button class="setup-button" id="setupButton" onclick="completeSetup()" disabled>
+                Create Username
+            </button>
+        </div>
+    </div>
+
     <div class="app-container">
         <!-- Sidebar Overlay -->
         <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
@@ -624,7 +652,7 @@
                     <div class="avatar" id="userAvatar">U</div>
                     <div class="profile-info">
                         <h3 id="displayName">User</h3>
-                        <div class="username" id="myUsername" onclick="editUsername(event)">user0000</div>
+                        <div class="username" id="myUsername" onclick="editUsername(event)">user00000</div>
                     </div>
                 </div>
                 <div class="header-actions">
@@ -715,7 +743,7 @@
                 <input type="text" class="modal-input" id="profileNameInput" maxlength="30">
                 
                 <label>Your Username (click to edit):</label>
-                <div class="username-display" id="profileUsername" onclick="editUsernameInProfile()" style="cursor: pointer;">user0000</div>
+                <div class="username-display" id="profileUsername" onclick="editUsernameInProfile()" style="cursor: pointer;">user00000</div>
                 
                 <div class="modal-buttons">
                     <button class="modal-btn primary" onclick="saveProfile()">Save</button>
@@ -730,8 +758,8 @@
         <div class="modal-content">
             <div class="modal-header">Add Contact</div>
             <div class="modal-body">
-                <label>Enter username (e.g. user1234):</label>
-                <input type="text" class="modal-input" id="contactUsernameInput" placeholder="user1234" maxlength="20">
+                <label>Enter username (type name, we'll add numbers):</label>
+                <input type="text" class="modal-input" id="contactUsernameInput" placeholder="e.g. john, alice, gamer" maxlength="20">
                 
                 <label>Display Name (optional):</label>
                 <input type="text" class="modal-input" id="contactNameInput" placeholder="Friend's Name" maxlength="30">
@@ -750,7 +778,7 @@
             <div class="modal-header">Share Your Username</div>
             <div class="modal-body">
                 <p>Share this username with others to let them add you:</p>
-                <div class="username-display" id="shareUsername">user0000</div>
+                <div class="username-display" id="shareUsername">user00000</div>
                 
                 <div class="modal-buttons">
                     <button class="modal-btn primary" onclick="copyUsername()">Copy Username</button>
@@ -1025,6 +1053,9 @@
                 document.getElementById('messagesArea').style.display = 'block';
                 document.getElementById('messageInputArea').style.display = 'flex';
                 
+                // Setup mobile keyboard handling
+                setupMobileKeyboardHandling();
+                
                 // Load and display messages
                 loadChatMessages(username);
                 
@@ -1052,6 +1083,18 @@
             });
         }
 
+        // Generate random username with good entropy
+        function generateRandomUsername(baseName) {
+            // Generate a random number between 10000 and 999999 for better uniqueness
+            const randomNum = Math.floor(Math.random() * 990000) + 10000;
+            return `${baseName}${randomNum}`;
+        }
+
+        // Extract base name from username (remove numbers at the end)
+        function extractBaseName(username) {
+            return username.replace(/\d+$/, '') || 'user';
+        }
+
         // Username editing
         function editUsername(event) {
             event.stopPropagation(); // Prevent profile modal from opening
@@ -1072,11 +1115,17 @@
             input.select();
             
             function saveUsername() {
-                const newUsername = input.value.trim();
+                let newUsername = input.value.trim();
+                
+                // If user just typed a base name (no numbers), generate full username
+                if (newUsername && !newUsername.match(/\d+$/)) {
+                    newUsername = generateRandomUsername(newUsername);
+                    input.value = newUsername; // Show the generated username
+                }
                 
                 // Validate username format
-                if (!newUsername.match(/^[a-zA-Z0-9_]{4,20}$/)) {
-                    alert('Username must be 4-20 characters (letters, numbers, underscore only)');
+                if (!newUsername.match(/^[a-zA-Z0-9_]{4,25}$/)) {
+                    alert('Username must be 4-25 characters (letters, numbers, underscore only)');
                     input.focus();
                     return;
                 }
@@ -1088,7 +1137,11 @@
                             updateUsername(newUsername);
                             finishEdit();
                         } else {
-                            alert('Username is already taken. Please choose a different one.');
+                            // If taken, regenerate with different number
+                            const baseName = extractBaseName(newUsername);
+                            const retryUsername = generateRandomUsername(baseName);
+                            input.value = retryUsername;
+                            alert(`Username taken. Trying: ${retryUsername}`);
                             input.focus();
                         }
                     }).catch(() => {
@@ -1126,7 +1179,7 @@
             input.className = 'modal-input';
             input.value = currentUsername;
             input.maxLength = 20;
-            input.placeholder = 'username1234';
+            input.placeholder = 'e.g. john, alice, gamer';
             
             profileUsername.style.display = 'none';
             profileUsername.parentNode.insertBefore(input, profileUsername.nextSibling);
@@ -1407,11 +1460,23 @@
         }
 
         function addContact() {
-            const username = document.getElementById('contactUsernameInput').value.trim();
-            const displayName = document.getElementById('contactNameInput').value.trim() || username;
+            let username = document.getElementById('contactUsernameInput').value.trim();
+            const displayName = document.getElementById('contactNameInput').value.trim();
             
-            if (!username || !username.match(/^[a-zA-Z0-9_]{4,20}$/)) {
-                alert('Please enter a valid username (4-20 characters, letters/numbers/underscore only)');
+            // If no username provided, show error
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+            
+            // If user typed just a base name, ask them to be more specific
+            if (!username.match(/\d+$/)) {
+                alert('Please enter the complete username with numbers (e.g. john12345)');
+                return;
+            }
+            
+            if (!username.match(/^[a-zA-Z0-9_]{4,25}$/)) {
+                alert('Please enter a valid username (4-25 characters, letters/numbers/underscore only)');
                 return;
             }
             
@@ -1427,7 +1492,7 @@
             
             const contact = {
                 username: username,
-                displayName: displayName,
+                displayName: displayName || extractBaseName(username),
                 lastSeen: null,
                 unreadCount: 0,
                 lastMessage: null
@@ -1486,6 +1551,31 @@
             textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
         }
 
+        // Mobile keyboard handling
+        function setupMobileKeyboardHandling() {
+            const messageInput = document.getElementById('messageInput');
+            const mainChat = document.getElementById('mainChat');
+            
+            if (messageInput && window.innerWidth <= 768) {
+                messageInput.addEventListener('focus', function() {
+                    setTimeout(() => {
+                        mainChat.classList.add('keyboard-open');
+                        // Scroll to bottom when keyboard opens
+                        const messagesArea = document.getElementById('messagesArea');
+                        if (messagesArea) {
+                            messagesArea.scrollTop = messagesArea.scrollHeight;
+                        }
+                    }, 300);
+                });
+                
+                messageInput.addEventListener('blur', function() {
+                    setTimeout(() => {
+                        mainChat.classList.remove('keyboard-open');
+                    }, 300);
+                });
+            }
+        }
+
         function filterContacts() {
             const query = document.getElementById('searchInput').value.toLowerCase();
             const chatItems = document.querySelectorAll('.chat-item');
@@ -1506,6 +1596,11 @@
 
         // Initialize app when page loads
         window.addEventListener('load', initApp);
+
+        // Handle viewport changes for mobile keyboards
+        window.addEventListener('resize', function() {
+            setupMobileKeyboardHandling();
+        });
 
         // Close modals when clicking outside
         window.addEventListener('click', function(event) {
