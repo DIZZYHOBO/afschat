@@ -611,11 +611,123 @@
             display: block;
             opacity: 1;
         }
+
+        /* First Time Setup Modal */
+        .first-time-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .first-time-content {
+            background: #2a3942;
+            border-radius: 12px;
+            max-width: 450px;
+            width: 90%;
+            color: #e9edef;
+            text-align: center;
+            padding: 40px 30px;
+        }
+
+        .welcome-icon-large {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .first-time-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #e9edef;
+        }
+
+        .first-time-subtitle {
+            font-size: 16px;
+            color: #8696a0;
+            margin-bottom: 30px;
+            line-height: 1.4;
+        }
+
+        .username-setup {
+            text-align: left;
+            margin-bottom: 30px;
+        }
+
+        .username-setup label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #e9edef;
+        }
+
+        .username-setup-input {
+            width: 100%;
+            padding: 12px 15px;
+            background: #3b4a54;
+            border: 2px solid #4a5c66;
+            border-radius: 8px;
+            color: #e9edef;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+
+        .username-setup-input:focus {
+            outline: none;
+            border-color: #00d4aa;
+        }
+
+        .username-preview {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: #111b21;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 14px;
+            color: #00d4aa;
+            min-height: 20px;
+        }
+
+        .error-message {
+            margin-top: 8px;
+            color: #ff6b6b;
+            font-size: 14px;
+            min-height: 20px;
+        }
+
+        .setup-button {
+            width: 100%;
+            padding: 15px;
+            background: #00d4aa;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .setup-button:hover:not(:disabled) {
+            background: #00a084;
+        }
+
+        .setup-button:disabled {
+            background: #4a5c66;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
     </style>
 </head>
 <body>
     <!-- First Time Setup Modal -->
-    <div class="first-time-modal" id="firstTimeModal">
+    <div class="first-time-modal" id="firstTimeModal" style="display: none;">
         <div class="first-time-content">
             <div class="welcome-icon-large">🔒</div>
             <h2 class="first-time-title">Welcome to SecureMessenger</h2>
@@ -804,11 +916,11 @@
         // Initialize app
         async function initApp() {
             try {
-                // Load or generate username
+                // Check if this is first time user
                 myUsername = localStorage.getItem('myUsername');
                 if (!myUsername) {
-                    myUsername = generateRandomUsername('user');
-                    localStorage.setItem('myUsername', myUsername);
+                    showFirstTimeSetup();
+                    return;
                 }
 
                 // Load display name
@@ -828,6 +940,94 @@
             } catch (error) {
                 console.error('Failed to initialize app:', error);
             }
+        }
+
+        // First time setup functions
+        function showFirstTimeSetup() {
+            document.getElementById('firstTimeModal').style.display = 'flex';
+        }
+
+        function previewUsername() {
+            const input = document.getElementById('setupUsernameInput');
+            const preview = document.getElementById('usernamePreview');
+            const error = document.getElementById('setupError');
+            const button = document.getElementById('setupButton');
+            
+            let inputValue = input.value.trim();
+            
+            // Clear previous states
+            error.textContent = '';
+            preview.textContent = '';
+            button.disabled = true;
+            
+            if (!inputValue) {
+                return;
+            }
+            
+            // Generate full username if user only typed base name
+            let fullUsername = inputValue;
+            if (!inputValue.match(/\d+$/)) {
+                fullUsername = generateRandomUsername(inputValue);
+            }
+            
+            // Validate username
+            if (!fullUsername.match(/^[a-zA-Z0-9_]{4,25}$/)) {
+                error.textContent = 'Username must be 4-25 characters (letters, numbers, underscore only)';
+                return;
+            }
+            
+            // Show preview
+            preview.textContent = `Your username will be: ${fullUsername}`;
+            button.disabled = false;
+        }
+
+        function handleSetupKeydown(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                completeSetup();
+            }
+        }
+
+        function completeSetup() {
+            const input = document.getElementById('setupUsernameInput');
+            const error = document.getElementById('setupError');
+            
+            let inputValue = input.value.trim();
+            
+            if (!inputValue) {
+                error.textContent = 'Please enter a username';
+                return;
+            }
+            
+            // Generate full username if needed
+            let fullUsername = inputValue;
+            if (!inputValue.match(/\d+$/)) {
+                fullUsername = generateRandomUsername(inputValue);
+            }
+            
+            // Final validation
+            if (!fullUsername.match(/^[a-zA-Z0-9_]{4,25}$/)) {
+                error.textContent = 'Invalid username format';
+                return;
+            }
+            
+            // Save username and complete setup
+            myUsername = fullUsername;
+            myDisplayName = extractBaseName(fullUsername) || 'User';
+            
+            localStorage.setItem('myUsername', myUsername);
+            localStorage.setItem('myDisplayName', myDisplayName);
+            
+            // Hide setup modal
+            document.getElementById('firstTimeModal').style.display = 'none';
+            
+            // Continue with app initialization
+            updateProfileUI();
+            loadContacts();
+            loadMessages();
+            initPeer();
+            
+            console.log('Setup completed with username:', myUsername);
         }
 
         // Initialize PeerJS connection
@@ -1323,6 +1523,7 @@
             sidebar.classList.remove('open');
             overlay.classList.remove('visible');
         }
+        
         function updateProfileUI() {
             document.getElementById('myUsername').textContent = myUsername;
             document.getElementById('displayName').textContent = myDisplayName;
