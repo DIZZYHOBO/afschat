@@ -916,13 +916,20 @@
         // Initialize app
         async function initApp() {
             try {
+                console.log('Initializing app...');
+                
                 // Check if this is first time user
                 myUsername = localStorage.getItem('myUsername');
+                console.log('Stored username:', myUsername);
+                
                 if (!myUsername) {
+                    console.log('No username found, showing first-time setup');
                     showFirstTimeSetup();
                     return;
                 }
 
+                console.log('Username found, continuing with app initialization');
+                
                 // Load display name
                 myDisplayName = localStorage.getItem('myDisplayName') || 'User';
 
@@ -944,7 +951,14 @@
 
         // First time setup functions
         function showFirstTimeSetup() {
-            document.getElementById('firstTimeModal').style.display = 'flex';
+            console.log('Showing first-time setup modal');
+            const modal = document.getElementById('firstTimeModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                console.log('First-time modal should now be visible');
+            } else {
+                console.error('Could not find firstTimeModal element');
+            }
         }
 
         function previewUsername() {
@@ -1032,29 +1046,100 @@
 
         // Initialize PeerJS connection
         function initPeer() {
-            // Use username as peer ID for consistency
-            peer = new Peer(myUsername);
+            console.log('Initializing PeerJS with username:', myUsername);
+            
+            // Create peer with more robust configuration
+            peer = new Peer(myUsername, {
+                debug: 2, // Enable debug logs
+                config: {
+                    'iceServers': [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:global.stun.twilio.com:3478' }
+                    ]
+                }
+            });
 
             peer.on('open', function(id) {
-                console.log('Connected with peer ID:', id);
+                console.log('✅ PeerJS connected successfully with ID:', id);
                 updateOnlineStatus(true);
+                
+                // Update UI to show we're connected
+                const appTitle = document.querySelector('.app-title');
+                if (appTitle) {
+                    appTitle.textContent = 'SecureMessenger (Online)';
+                    appTitle.style.color = '#00d4aa';
+                }
             });
 
             peer.on('connection', function(conn) {
-                console.log('Incoming connection from:', conn.peer);
+                console.log('📞 Incoming connection from:', conn.peer);
                 handleIncomingConnection(conn);
             });
 
             peer.on('error', function(err) {
-                console.error('PeerJS error:', err);
+                console.error('❌ PeerJS error:', err);
                 updateOnlineStatus(false);
                 
-                // Retry connection after a delay
-                setTimeout(() => {
-                    if (!peer.open) {
-                        initPeer();
-                    }
-                }, 5000);
+                // Update UI to show connection issues
+                const appTitle = document.querySelector('.app-title');
+                if (appTitle) {
+                    appTitle.textContent = 'SecureMessenger (Offline)';
+                    appTitle.style.color = '#ff6b6b';
+                }
+                
+                // Handle different types of errors
+                if (err.type === 'peer-unavailable') {
+                    console.log('Target peer is not available');
+                } else if (err.type === 'network') {
+                    console.log('Network error, will retry...');
+                    setTimeout(() => {
+                        if (!peer.open) {
+                            console.log('Retrying PeerJS connection...');
+                            initPeer();
+                        }
+                    }, 5000);
+                } else if (err.type === 'server-error') {
+                    console.log('Server error, trying with modified ID...');
+                    // If there's a server error, try with a slightly modified username
+                    const fallbackUsername = myUsername + '_' + Date.now().toString(36);
+                    setTimeout(() => {
+                        peer = new Peer(fallbackUsername, {
+                            debug: 1,
+                            config: {
+                                'iceServers': [
+                                    { urls: 'stun:stun.l.google.com:19302' },
+                                    { urls: 'stun:stun1.l.google.com:19302' }
+                                ]
+                            }
+                        });
+                        setupPeerEvents();
+                    }, 2000);
+                } else {
+                    console.log('Other error, will retry in 5 seconds...');
+                    setTimeout(() => {
+                        if (!peer.open) {
+                            initPeer();
+                        }
+                    }, 5000);
+                }
+            });
+
+            peer.on('disconnected', function() {
+                console.log('🔌 PeerJS disconnected, attempting to reconnect...');
+                peer.reconnect();
+            });
+        }
+
+        function setupPeerEvents() {
+            peer.on('open', function(id) {
+                console.log('✅ Reconnected with peer ID:', id);
+                updateOnlineStatus(true);
+            });
+
+            peer.on('connection', function(conn) {
+                console.log('📞 Incoming connection from:', conn.peer);
+                handleIncomingConnection(conn);
             });
         }
 
@@ -1796,7 +1881,14 @@
         }
 
         // Initialize app when page loads
-        window.addEventListener('load', initApp);
+        window.addEventListener('load', function() {
+            console.log('Page loaded, initializing app...');
+            
+            // For testing: uncomment the line below to clear storage and test first-time setup
+            // localStorage.clear(); 
+            
+            initApp();
+        });
 
         // Handle viewport changes for mobile keyboards
         window.addEventListener('resize', function() {
