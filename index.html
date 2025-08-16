@@ -1316,6 +1316,10 @@
                     <button class="modal-btn secondary" onclick="exportSecurityReport()" style="width: 100%; margin: 5px 0;">
                         📋 Export Security Report
                     </button>
+                    <hr style="border: 1px solid #3b4a54; margin: 15px 0;">
+                    <button class="modal-btn" onclick="secureLogout()" style="width: 100%; margin: 5px 0; background: #ff6b6b; color: white;">
+                        🚪 Secure Logout
+                    </button>
                 </div>
                 
                 <div class="modal-buttons">
@@ -1383,18 +1387,21 @@
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.0/dist/peerjs.min.js"></script>
 
     <script>
-        // Crypto Username System (simplified for demo)
+        // Crypto Username System (enhanced for demo)
         class CryptoUsernameSystem {
             constructor() {
                 this.username = null;
+                this.keyPair = null;
+                this.deviceFingerprint = null;
             }
 
             async generateKeyPair() {
-                return await crypto.subtle.generateKey(
+                this.keyPair = await crypto.subtle.generateKey(
                     { name: 'ECDSA', namedCurve: 'P-256' },
                     true,
                     ['sign', 'verify']
                 );
+                return this.keyPair;
             }
 
             async createUsername(baseName) {
@@ -1404,33 +1411,254 @@
             }
 
             async saveToStorage(password) {
-                localStorage.setItem('cryptoUsername', this.username);
+                const keyData = {
+                    username: this.username,
+                    password: password, // Store for validation
+                    keyPair: this.keyPair ? 'generated' : null,
+                    created: Date.now()
+                };
+                
+                // Encrypt with password
+                const encrypted = await this.encryptData(JSON.stringify(keyData), password);
+                localStorage.setItem('cryptoUsername', encrypted);
                 localStorage.setItem('hasSecureIdentity', 'true');
+                
+                console.log('💾 Identity saved with password protection');
             }
 
             async loadFromStorage(password) {
-                this.username = localStorage.getItem('cryptoUsername');
-                return !!this.username;
+                try {
+                    const encrypted = localStorage.getItem('cryptoUsername');
+                    if (!encrypted) {
+                        return false;
+                    }
+
+                    const decrypted = await this.decryptData(encrypted, password);
+                    const keyData = JSON.parse(decrypted);
+                    
+                    // Validate password
+                    if (keyData.password !== password) {
+                        console.error('❌ Invalid password');
+                        return false;
+                    }
+                    
+                    this.username = keyData.username;
+                    
+                    // Generate new key pair (simplified for demo)
+                    await this.generateKeyPair();
+                    
+                    console.log('✅ Identity loaded and password verified');
+                    return true;
+                } catch (error) {
+                    console.error('❌ Failed to decrypt identity:', error);
+                    return false;
+                }
             }
 
             async getPublicKeyForSharing() {
+                if (this.keyPair) {
+                    const publicKeyBuffer = await crypto.subtle.exportKey('raw', this.keyPair.publicKey);
+                    const publicKeyArray = Array.from(new Uint8Array(publicKeyBuffer));
+                    return btoa(String.fromCharCode.apply(null, publicKeyArray));
+                }
                 return 'demo_public_key_' + Math.random().toString(36);
+            }
+
+            // Simple encryption for demo
+            async encryptData(data, password) {
+                const encoder = new TextEncoder();
+                const dataBuffer = encoder.encode(data);
+                
+                // Use password as key (simplified)
+                const passwordBuffer = encoder.encode(password);
+                const keyMaterial = await crypto.subtle.importKey(
+                    'raw',
+                    passwordBuffer,
+                    'PBKDF2',
+                    false,
+                    ['deriveKey']
+                );
+
+                const salt = crypto.getRandomValues(new Uint8Array(16));
+                const key = await crypto.subtle.deriveKey(
+                    {
+                        name: 'PBKDF2',
+                        salt: salt,
+                        iterations: 100000,
+                        hash: 'SHA-256'
+                    },
+                    keyMaterial,
+                    {
+                        name: 'AES-GCM',
+                        length: 256
+                    },
+                    false,
+                    ['encrypt']
+                );
+
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+                const encrypted = await crypto.subtle.encrypt(
+                    {
+                        name: 'AES-GCM',
+                        iv: iv
+                    },
+                    key,
+                    dataBuffer
+                );
+
+                // Combine salt + iv + encrypted data
+                const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+                combined.set(salt, 0);
+                combined.set(iv, salt.length);
+                combined.set(new Uint8Array(encrypted), salt.length + iv.length);
+
+                return btoa(String.fromCharCode.apply(null, combined));
+            }
+
+            async decryptData(encryptedData, password) {
+                const combined = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+                
+                const salt = combined.slice(0, 16);
+                const iv = combined.slice(16, 28);
+                const encrypted = combined.slice(28);
+
+                const encoder = new TextEncoder();
+                const passwordBuffer = encoder.encode(password);
+                const keyMaterial = await crypto.subtle.importKey(
+                    'raw',
+                    passwordBuffer,
+                    'PBKDF2',
+                    false,
+                    ['deriveKey']
+                );
+
+                const key = await crypto.subtle.deriveKey(
+                    {
+                        name: 'PBKDF2',
+                        salt: salt,
+                        iterations: 100000,
+                        hash: 'SHA-256'
+                    },
+                    keyMaterial,
+                    {
+                        name: 'AES-GCM',
+                        length: 256
+                    },
+                    false,
+                    ['decrypt']
+                );
+
+                const decrypted = await crypto.subtle.decrypt(
+                    {
+                        name: 'AES-GCM',
+                        iv: iv
+                    },
+                    key,
+                    encrypted
+                );
+
+                const decoder = new TextDecoder();
+                return decoder.decode(decrypted);
+            }
+
+            // Download key file
+            async downloadKeyFile(password) {
+                const keyData = {
+                    username: this.username,
+                    password: password,
+                    created: new Date().toISOString(),
+                    version: '1.0'
+                };
+                
+                const encrypted = await this.encryptData(JSON.stringify(keyData), password);
+                
+                const blob = new Blob([encrypted], { type: 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+                
+                const downloadLink = document.createElement('a');
+                downloadLink.href = url;
+                downloadLink.download = `${this.username}.key`;
+                downloadLink.style.display = 'none';
+                
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+                
+                URL.revokeObjectURL(url);
+                return `${this.username}.key`;
+            }
+
+            // Load from key file
+            async loadFromKeyFile(file, password) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    
+                    reader.onload = async (event) => {
+                        try {
+                            const encryptedData = event.target.result;
+                            const decrypted = await this.decryptData(encryptedData, password);
+                            const keyData = JSON.parse(decrypted);
+                            
+                            // Validate password matches
+                            if (keyData.password !== password) {
+                                reject(new Error('Invalid password for this key file'));
+                                return;
+                            }
+                            
+                            this.username = keyData.username;
+                            await this.generateKeyPair();
+                            
+                            resolve(true);
+                        } catch (error) {
+                            reject(new Error('Invalid password or corrupted key file'));
+                        }
+                    };
+                    
+                    reader.onerror = () => {
+                        reject(new Error('Failed to read file'));
+                    };
+                    
+                    reader.readAsText(file);
+                });
+            }
+
+            // Clear all data (for logout)
+            clearIdentity() {
+                this.username = null;
+                this.keyPair = null;
+                this.deviceFingerprint = null;
+                localStorage.removeItem('cryptoUsername');
+                localStorage.removeItem('hasSecureIdentity');
+                console.log('🚪 Identity cleared');
             }
         }
 
-        // E2E Encryption System (simplified for demo)
+        // E2E Encryption System (enhanced)
         class E2EEncryption {
             constructor(userSystem) {
                 this.userSystem = userSystem;
                 this.conversations = new Map();
+                this.sessionKeys = new Map(); // Store session keys
             }
 
             async loadState() {
+                const saved = localStorage.getItem('e2eConversations');
+                if (saved) {
+                    try {
+                        const conversations = JSON.parse(saved);
+                        this.conversations = new Map(Object.entries(conversations));
+                        console.log('📂 E2E conversations loaded');
+                    } catch (error) {
+                        console.error('Failed to load E2E state:', error);
+                    }
+                }
                 return true;
             }
 
             async saveState() {
-                return true;
+                const conversationsObj = Object.fromEntries(this.conversations);
+                localStorage.setItem('e2eConversations', JSON.stringify(conversationsObj));
+                console.log('💾 E2E conversations saved');
             }
 
             getConversationInfo(username) {
@@ -1438,27 +1666,120 @@
             }
 
             async initializeConversation(username, publicKey) {
-                const conversation = {
-                    contactUsername: username,
-                    established: true,
-                    created: Date.now()
-                };
-                this.conversations.set(username, conversation);
-                return conversation;
+                try {
+                    // Generate session key for this conversation
+                    const sessionKey = await crypto.subtle.generateKey(
+                        {
+                            name: 'AES-GCM',
+                            length: 256
+                        },
+                        false,
+                        ['encrypt', 'decrypt']
+                    );
+
+                    const conversation = {
+                        contactUsername: username,
+                        established: true,
+                        created: Date.now(),
+                        messageCount: 0
+                    };
+
+                    this.conversations.set(username, conversation);
+                    this.sessionKeys.set(username, sessionKey);
+                    
+                    await this.saveState();
+                    
+                    console.log('🔐 E2E conversation established with:', username);
+                    return conversation;
+                } catch (error) {
+                    console.error('Failed to initialize E2E conversation:', error);
+                    throw error;
+                }
             }
 
             async encryptMessage(username, plaintext) {
-                return {
-                    type: 'e2e_message',
-                    text: plaintext,
-                    timestamp: Date.now(),
-                    from: this.userSystem.username,
-                    securityLevel: 'maximum'
-                };
+                try {
+                    let sessionKey = this.sessionKeys.get(username);
+                    
+                    // Initialize conversation if it doesn't exist
+                    if (!sessionKey) {
+                        await this.initializeConversation(username, 'demo_key');
+                        sessionKey = this.sessionKeys.get(username);
+                    }
+
+                    const encoder = new TextEncoder();
+                    const plaintextBytes = encoder.encode(plaintext);
+                    const iv = crypto.getRandomValues(new Uint8Array(12));
+
+                    const ciphertext = await crypto.subtle.encrypt(
+                        {
+                            name: 'AES-GCM',
+                            iv: iv
+                        },
+                        sessionKey,
+                        plaintextBytes
+                    );
+
+                    // Update conversation
+                    const conversation = this.conversations.get(username);
+                    if (conversation) {
+                        conversation.messageCount = (conversation.messageCount || 0) + 1;
+                        this.conversations.set(username, conversation);
+                        await this.saveState();
+                    }
+
+                    return {
+                        type: 'e2e_message',
+                        iv: Array.from(iv),
+                        ciphertext: Array.from(new Uint8Array(ciphertext)),
+                        timestamp: Date.now(),
+                        from: this.userSystem.username,
+                        securityLevel: 'maximum'
+                    };
+                } catch (error) {
+                    console.error('E2E encryption failed:', error);
+                    throw error;
+                }
             }
 
             async decryptMessage(encryptedMessage) {
-                return encryptedMessage.text;
+                try {
+                    const { iv, ciphertext, from } = encryptedMessage;
+                    
+                    let sessionKey = this.sessionKeys.get(from);
+                    
+                    // Initialize conversation if it doesn't exist
+                    if (!sessionKey) {
+                        await this.initializeConversation(from, 'demo_key');
+                        sessionKey = this.sessionKeys.get(from);
+                    }
+
+                    const ivArray = new Uint8Array(iv);
+                    const ciphertextArray = new Uint8Array(ciphertext);
+
+                    const decrypted = await crypto.subtle.decrypt(
+                        {
+                            name: 'AES-GCM',
+                            iv: ivArray
+                        },
+                        sessionKey,
+                        ciphertextArray
+                    );
+
+                    const decoder = new TextDecoder();
+                    return decoder.decode(decrypted);
+                } catch (error) {
+                    console.error('E2E decryption failed:', error);
+                    throw error;
+                }
+            }
+
+            // Clear all E2E data (for logout)
+            clearAllConversations() {
+                this.conversations.clear();
+                this.sessionKeys.clear();
+                localStorage.removeItem('e2eConversations');
+                console.log('🧹 All E2E conversations cleared');
             }
         }
 
@@ -2488,27 +2809,40 @@
                 return;
             }
             
+            if (password.length < 8) {
+                alert('Password must be at least 8 characters long');
+                return;
+            }
+            
             try {
                 console.log('🔓 Importing existing identity...');
                 
                 // Show progress
                 document.getElementById('importProgress').style.display = 'block';
                 document.getElementById('importStatus').textContent = 'Decrypting key file...';
-                document.getElementById('importProgressFill').style.width = '50%';
+                document.getElementById('importProgressFill').style.width = '30%';
                 
-                // Simulate key import
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Create new user system
+                const userSystem = new CryptoUsernameSystem();
                 
-                document.getElementById('importStatus').textContent = 'Verifying identity...';
+                // Try to load from file with password
+                await new Promise(resolve => setTimeout(resolve, 500)); // Visual delay
+                
+                document.getElementById('importStatus').textContent = 'Verifying password...';
+                document.getElementById('importProgressFill').style.width = '60%';
+                
+                const success = await userSystem.loadFromKeyFile(fileInput.files[0], password);
+                
+                if (!success) {
+                    throw new Error('Invalid password or corrupted key file');
+                }
+                
+                document.getElementById('importStatus').textContent = 'Identity verified!';
                 document.getElementById('importProgressFill').style.width = '100%';
                 
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
-                // Create demo identity
-                const userSystem = new CryptoUsernameSystem();
-                const filename = fileInput.files[0].name;
-                const username = filename.replace('.key', '');
-                userSystem.username = username;
+                // Save to storage
                 await userSystem.saveToStorage(password);
                 
                 // Hide setup modal
@@ -2517,11 +2851,22 @@
                 // Initialize messenger
                 initializeMessenger();
                 
-                console.log('✅ Identity imported:', username);
+                console.log('✅ Identity imported:', userSystem.username);
                 
             } catch (error) {
                 console.error('Failed to import identity:', error);
-                alert('Failed to import key file. Please check your password and try again.');
+                
+                // Show specific error message
+                document.getElementById('importStatus').textContent = error.message;
+                document.getElementById('importStatus').style.color = '#ff6b6b';
+                document.getElementById('importProgressFill').style.background = '#ff6b6b';
+                
+                // Reset after 3 seconds
+                setTimeout(() => {
+                    document.getElementById('importProgress').style.display = 'none';
+                    document.getElementById('importStatus').style.color = '#e9edef';
+                    document.getElementById('importProgressFill').style.background = 'linear-gradient(90deg, #00d4aa, #00a084)';
+                }, 3000);
             }
         }
 
@@ -2690,7 +3035,10 @@ Add this username to start ultra-secure messaging!`;
         // Security Center Functions
         function downloadBackupKey() {
             if (secureMessenger && secureMessenger.userSystem.username) {
-                downloadKeyFile(secureMessenger.userSystem.username, 'backup');
+                const password = prompt('Enter your password to create encrypted backup:');
+                if (password) {
+                    secureMessenger.userSystem.downloadKeyFile(password);
+                }
             }
         }
 
@@ -2733,6 +3081,95 @@ Add this username to start ultra-secure messaging!`;
             document.body.removeChild(downloadLink);
             
             URL.revokeObjectURL(url);
+        }
+
+        function secureLogout() {
+            const confirm = window.confirm(
+                '🚪 Secure Logout\n\n' +
+                'This will:\n' +
+                '• Close all connections\n' +
+                '• Clear your identity from memory\n' +
+                '• Clear all chat data\n' +
+                '• Return you to the login screen\n\n' +
+                'Your key file will remain safe. Continue?'
+            );
+            
+            if (confirm) {
+                performSecureLogout();
+            }
+        }
+
+        function performSecureLogout() {
+            try {
+                console.log('🚪 Performing secure logout...');
+                
+                if (secureMessenger) {
+                    // Close all connections
+                    secureMessenger.connections.forEach(conn => {
+                        if (conn.open) {
+                            conn.close();
+                        }
+                    });
+                    
+                    // Close peer connection
+                    if (secureMessenger.peer) {
+                        secureMessenger.peer.destroy();
+                    }
+                    
+                    // Clear E2E conversations
+                    if (secureMessenger.e2e) {
+                        secureMessenger.e2e.clearAllConversations();
+                    }
+                    
+                    // Clear user identity
+                    if (secureMessenger.userSystem) {
+                        secureMessenger.userSystem.clearIdentity();
+                    }
+                }
+                
+                // Clear all localStorage data
+                localStorage.removeItem('contacts');
+                localStorage.removeItem('chatMessages');
+                localStorage.removeItem('e2eConversations');
+                
+                // Reset global state
+                secureMessenger = null;
+                
+                // Show logout toast
+                showLogoutToast();
+                
+                // Reload page to reset everything
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+                
+                console.log('✅ Secure logout completed');
+                
+            } catch (error) {
+                console.error('Error during logout:', error);
+                alert('Logout completed with some warnings. The page will reload for security.');
+                window.location.reload();
+            }
+        }
+
+        function showLogoutToast() {
+            const toast = document.createElement('div');
+            toast.className = 'toast success';
+            toast.innerHTML = `
+                <div class="toast-header">
+                    <div class="toast-title">
+                        <span class="toast-icon">🚪</span>
+                        Secure Logout Complete
+                    </div>
+                </div>
+                <div class="toast-body">
+                    All data cleared from memory. Your key file remains safe.
+                    <br><small style="opacity: 0.7;">Reloading application...</small>
+                </div>
+            `;
+
+            document.getElementById('toastContainer').appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 100);
         }
 
         // Initialize messenger
