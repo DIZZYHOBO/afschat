@@ -1413,7 +1413,7 @@
             async saveToStorage(password) {
                 const keyData = {
                     username: this.username,
-                    password: password, // Store for validation
+                    passwordHash: await this.hashPassword(password), // Store hash for verification
                     keyPair: this.keyPair ? 'generated' : null,
                     created: Date.now()
                 };
@@ -1436,11 +1436,15 @@
                     const decrypted = await this.decryptData(encrypted, password);
                     const keyData = JSON.parse(decrypted);
                     
-                    // Validate password
-                    if (keyData.password !== password) {
-                        console.error('❌ Invalid password');
-                        return false;
+                    // Validate password hash if available
+                    if (keyData.passwordHash) {
+                        const providedHash = await this.hashPassword(password);
+                        if (keyData.passwordHash !== providedHash) {
+                            console.error('❌ Invalid password hash');
+                            return false;
+                        }
                     }
+                    // Legacy support: if no hash but decryption worked, accept it
                     
                     this.username = keyData.username;
                     
@@ -1565,7 +1569,7 @@
             async downloadKeyFile(password) {
                 const keyData = {
                     username: this.username,
-                    password: password,
+                    passwordHash: await this.hashPassword(password), // Store hash instead of plain password
                     created: new Date().toISOString(),
                     version: '1.0'
                 };
@@ -1596,21 +1600,32 @@
                     reader.onload = async (event) => {
                         try {
                             const encryptedData = event.target.result;
+                            
+                            // Try to decrypt with the provided password
                             const decrypted = await this.decryptData(encryptedData, password);
                             const keyData = JSON.parse(decrypted);
                             
-                            // Validate password matches
-                            if (keyData.password !== password) {
-                                reject(new Error('Invalid password for this key file'));
-                                return;
+                            // Validate password hash if available
+                            if (keyData.passwordHash) {
+                                const providedHash = await this.hashPassword(password);
+                                if (keyData.passwordHash !== providedHash) {
+                                    reject(new Error('Invalid password for this key file'));
+                                    return;
+                                }
                             }
+                            // Legacy support: if no hash, but decryption worked, accept it
                             
                             this.username = keyData.username;
                             await this.generateKeyPair();
                             
                             resolve(true);
                         } catch (error) {
-                            reject(new Error('Invalid password or corrupted key file'));
+                            // If decryption fails, it's definitely wrong password
+                            if (error.name === 'OperationError' || error.message.includes('decrypt')) {
+                                reject(new Error('Invalid password - decryption failed'));
+                            } else {
+                                reject(new Error('Invalid password or corrupted key file'));
+                            }
                         }
                     };
                     
@@ -1620,6 +1635,15 @@
                     
                     reader.readAsText(file);
                 });
+            }
+
+            // Hash password for verification
+            async hashPassword(password) {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(password);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
             }
 
             // Clear all data (for logout)
@@ -2737,8 +2761,8 @@
                 // Save to storage
                 await userSystem.saveToStorage(password);
                 
-                // Download key file (simulated)
-                downloadKeyFile(username, password);
+                // Download key file using the proper method
+                await userSystem.downloadKeyFile(password);
                 
                 // Hide setup modal
                 document.getElementById('securitySetupModal').style.display = 'none';
@@ -2748,6 +2772,14 @@
                 
                 console.log('✅ Secure identity created:', username);
                 
+                // Show success message
+                setTimeout(() => {
+                    if (window.secureMessenger) {
+                        window.secureMessenger.showToast('success', '🎉 Identity Created!', 
+                            `Your secure identity ${username} has been created and your key file downloaded.`);
+                    }
+                }, 1000);
+                
             } catch (error) {
                 console.error('Failed to create identity:', error);
                 alert('Failed to create secure identity. Please try again.');
@@ -2755,11 +2787,12 @@
         }
 
         function downloadKeyFile(username, password) {
-            // Simulate key file download
+            // For testing: create a properly formatted key file
             const keyData = {
                 username: username,
                 created: new Date().toISOString(),
-                encrypted: true
+                encrypted: true,
+                version: '1.0'
             };
             
             const blob = new Blob([JSON.stringify(keyData, null, 2)], { type: 'application/octet-stream' });
