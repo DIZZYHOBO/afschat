@@ -13,27 +13,27 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #111b21;
+            background: #0d1117;
             height: 100vh;
             overflow: hidden;
         }
 
         .app-container {
-            background: #222e35;
+            background: #161b22;
             height: 100vh;
             display: flex;
-            color: #e9edef;
+            color: #e6edf3;
         }
 
         .sidebar {
-            width: 400px;
-            background: #111b21;
+            width: 320px;
+            background: #0d1117;
             display: flex;
             flex-direction: column;
-            border-right: 1px solid #2a3942;
+            border-right: 1px solid #21262d;
             position: fixed;
             height: 100vh;
-            left: -400px;
+            left: -320px;
             transition: left 0.3s ease;
             z-index: 1000;
         }
@@ -43,12 +43,12 @@
         }
 
         .sidebar-header {
-            padding: 20px;
-            background: #2a3942;
+            padding: 16px;
+            background: #161b22;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #3b4a54;
+            border-bottom: 1px solid #21262d;
         }
 
         .user-profile {
@@ -58,97 +58,100 @@
         }
 
         .avatar {
-            width: 40px;
-            height: 40px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #00d4aa, #00a084);
+            background: linear-gradient(135deg, #238636, #1f6e32);
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 600;
             color: white;
-            margin-right: 12px;
+            margin-right: 10px;
             position: relative;
+            font-size: 14px;
         }
 
         .security-badge {
             position: absolute;
             bottom: -2px;
             right: -2px;
-            width: 16px;
-            height: 16px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
-            background: #00d4aa;
+            background: #238636;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 10px;
-            border: 2px solid #2a3942;
+            font-size: 8px;
+            border: 2px solid #161b22;
         }
 
         .profile-info h3 {
-            font-size: 16px;
-            font-weight: 400;
-            margin-bottom: 2px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 1px;
         }
 
         .username {
-            font-size: 13px;
-            color: #8696a0;
+            font-size: 11px;
+            color: #7d8590;
             font-family: monospace;
             cursor: pointer;
-            padding: 2px 6px;
-            border-radius: 4px;
+            padding: 1px 4px;
+            border-radius: 3px;
             transition: background 0.2s;
         }
 
         .username:hover {
-            background: rgba(134, 150, 160, 0.1);
+            background: rgba(125, 133, 144, 0.1);
         }
 
         .header-actions {
             display: flex;
-            gap: 15px;
+            gap: 8px;
         }
 
         .header-btn {
             background: none;
             border: none;
-            color: #8696a0;
+            color: #7d8590;
             cursor: pointer;
-            padding: 8px;
-            border-radius: 50%;
-            transition: background 0.2s;
+            padding: 6px;
+            border-radius: 6px;
+            transition: all 0.2s;
             position: relative;
         }
 
         .header-btn:hover {
-            background: rgba(134, 150, 160, 0.1);
+            background: #21262d;
+            color: #e6edf3;
         }
 
         .search-bar {
-            padding: 15px 20px;
-            background: #111b21;
-            border-bottom: 1px solid #2a3942;
+            padding: 12px 16px;
+            background: #0d1117;
+            border-bottom: 1px solid #21262d;
         }
 
         .search-input {
             width: 100%;
-            padding: 10px 15px;
-            background: #2a3942;
-            border: none;
-            border-radius: 8px;
-            color: #e9edef;
-            font-size: 14px;
+            padding: 8px 12px;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #e6edf3;
+            font-size: 13px;
         }
 
         .search-input::placeholder {
-            color: #8696a0;
+            color: #7d8590;
         }
 
         .search-input:focus {
             outline: none;
-            background: #3b4a54;
+            border-color: #1f6feb;
+            box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.3);
         }
 
         .chats-list {
@@ -157,59 +160,60 @@
         }
 
         .chat-item {
-            padding: 15px 20px;
+            padding: 12px 16px;
             cursor: pointer;
             transition: background 0.15s;
-            border-bottom: 1px solid rgba(42, 57, 66, 0.5);
+            border-bottom: 1px solid rgba(33, 38, 45, 0.5);
             display: flex;
             align-items: center;
             position: relative;
         }
 
         .chat-item:hover {
-            background: #2a3942;
+            background: #161b22;
         }
 
         .chat-item.active {
-            background: #2a3942;
+            background: #21262d;
+            border-left: 3px solid #1f6feb;
         }
 
         .chat-item.unread {
-            background: rgba(0, 212, 170, 0.05);
+            background: rgba(31, 111, 235, 0.05);
         }
 
         .chat-avatar {
-            width: 50px;
-            height: 50px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #fd7e14, #d63384);
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 600;
             color: white;
-            margin-right: 15px;
-            font-size: 18px;
+            margin-right: 12px;
+            font-size: 16px;
             position: relative;
         }
 
         .chat-security-indicator {
             position: absolute;
-            top: -2px;
-            right: -2px;
-            width: 18px;
-            height: 18px;
+            top: -1px;
+            right: -1px;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 10px;
-            border: 2px solid #111b21;
+            font-size: 8px;
+            border: 2px solid #0d1117;
         }
 
-        .security-max { background: #00d4aa; }
-        .security-partial { background: #ffb800; }
-        .security-none { background: #ff6b6b; }
+        .security-max { background: #238636; }
+        .security-partial { background: #d1242f; }
+        .security-none { background: #656d76; }
 
         .chat-info {
             flex: 1;
@@ -224,23 +228,23 @@
         }
 
         .chat-name {
-            font-size: 16px;
-            font-weight: 400;
-            color: #e9edef;
+            font-size: 14px;
+            font-weight: 500;
+            color: #e6edf3;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
         .chat-time {
-            font-size: 12px;
-            color: #8696a0;
+            font-size: 11px;
+            color: #7d8590;
             white-space: nowrap;
         }
 
         .chat-preview {
-            font-size: 14px;
-            color: #8696a0;
+            font-size: 12px;
+            color: #7d8590;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -249,33 +253,33 @@
         }
 
         .unread-badge {
-            background: #00d4aa;
+            background: #1f6feb;
             color: white;
             border-radius: 50%;
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
-            margin-left: 10px;
+            margin-left: 8px;
         }
 
         .main-chat {
             flex: 1;
             display: flex;
             flex-direction: column;
-            background: #0b141a;
+            background: #0d1117;
             width: 100%;
         }
 
         .app-header {
-            background: #2a3942;
-            padding: 15px 20px;
+            background: #161b22;
+            padding: 12px 16px;
             display: flex;
             align-items: center;
-            border-bottom: 1px solid #3b4a54;
+            border-bottom: 1px solid #21262d;
         }
 
         .menu-btn {
@@ -537,20 +541,20 @@
             justify-content: center;
             height: 100%;
             text-align: center;
-            color: #8696a0;
-            padding: 40px;
+            color: #7d8590;
+            padding: 32px;
         }
 
         .welcome-icon {
-            width: 120px;
-            height: 120px;
+            width: 80px;
+            height: 80px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #00d4aa, #00a084);
+            background: linear-gradient(135deg, #238636, #1f6e32);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 48px;
-            margin-bottom: 30px;
+            font-size: 32px;
+            margin-bottom: 24px;
             color: white;
         }
 
@@ -642,15 +646,15 @@
         }
 
         .username-display {
-            background: #3b4a54;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 15px 0;
+            background: #21262d;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 12px 0;
             text-align: center;
             font-family: monospace;
-            font-size: 16px;
-            color: #00d4aa;
-            border: 2px dashed #4a5c66;
+            font-size: 14px;
+            color: #238636;
+            border: 1px dashed #30363d;
         }
 
         .empty-state {
@@ -658,21 +662,21 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 200px;
-            color: #8696a0;
-            font-size: 14px;
+            height: 160px;
+            color: #7d8590;
+            font-size: 13px;
         }
 
         .status-indicator {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
             display: inline-block;
-            margin-right: 5px;
+            margin-right: 4px;
         }
 
-        .status-online { background: #00d4aa; }
-        .status-offline { background: #8696a0; }
+        .status-online { background: #238636; }
+        .status-offline { background: #656d76; }
 
         .sidebar-overlay {
             position: fixed;
@@ -949,46 +953,46 @@
 
         .toast-btn {
             flex: 1;
-            padding: 10px 16px;
+            padding: 8px 12px;
             border: none;
-            border-radius: 8px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 500;
             transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 4px;
         }
 
         .toast-btn.accept {
-            background: #00d4aa;
+            background: #238636;
             color: white;
         }
 
         .toast-btn.accept:hover {
-            background: #00a084;
+            background: #2ea043;
             transform: translateY(-1px);
         }
 
         .toast-btn.deny {
-            background: #ff6b6b;
+            background: #d1242f;
             color: white;
         }
 
         .toast-btn.deny:hover {
-            background: #ff5252;
+            background: #da3633;
             transform: translateY(-1px);
         }
 
         .toast-btn.info {
-            background: #667eea;
+            background: #1f6feb;
             color: white;
         }
 
         .toast-btn.info:hover {
-            background: #5a6fd8;
+            background: #388bfd;
             transform: translateY(-1px);
         }
 
@@ -996,9 +1000,9 @@
             position: absolute;
             bottom: 0;
             left: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #00d4aa, #00a084);
-            border-radius: 0 0 12px 12px;
+            height: 2px;
+            background: linear-gradient(90deg, #238636, #2ea043);
+            border-radius: 0 0 6px 6px;
             transition: width linear;
         }
 
@@ -1252,9 +1256,9 @@
                 <h2 style="color: #e9edef; margin-bottom: 15px;">Ultra Secure P2P Messenger</h2>
                 <p>Military-grade encryption with perfect forward secrecy.</p>
                 <p style="margin-top: 15px; font-size: 14px;">Add a contact to start ultra-secure messaging.</p>
-                <div style="margin-top: 20px; padding: 20px; background: rgba(0, 212, 170, 0.1); border-radius: 12px; max-width: 400px;">
-                    <h4 style="color: #00d4aa; margin-bottom: 10px;">🛡️ Security Features</h4>
-                    <ul style="text-align: left; font-size: 14px; color: #8696a0;">
+                <div style="margin-top: 16px; padding: 16px; background: rgba(35, 134, 54, 0.1); border-radius: 8px; max-width: 360px;">
+                    <h4 style="color: #238636; margin-bottom: 8px;">🛡️ Security Features</h4>
+                    <ul style="text-align: left; font-size: 12px; color: #7d8590;">
                         <li>• End-to-end encryption with Signal Protocol</li>
                         <li>• Perfect forward secrecy</li>
                         <li>• Cryptographic usernames (no phone numbers)</li>
@@ -1838,13 +1842,32 @@
                     return;
                 }
                 
-                // Try to load with demo password first, but handle failures gracefully
+                // Try to load with a few common passwords or prompt for password
                 let loadSuccess = false;
-                try {
-                    loadSuccess = await this.userSystem.loadFromStorage('demo');
-                } catch (error) {
-                    console.log('Failed to load with demo password, showing setup');
-                    loadSuccess = false;
+                const passwords = ['demo', 'password', 'test123'];
+                
+                for (const pwd of passwords) {
+                    try {
+                        loadSuccess = await this.userSystem.loadFromStorage(pwd);
+                        if (loadSuccess) {
+                            console.log(`✅ Identity loaded with password: ${pwd}`);
+                            break;
+                        }
+                    } catch (error) {
+                        console.log(`Failed to load with password "${pwd}":`, error.message);
+                    }
+                }
+                
+                // If all common passwords fail, prompt user
+                if (!loadSuccess) {
+                    const userPassword = prompt('Enter your account password to unlock your secure identity:');
+                    if (userPassword) {
+                        try {
+                            loadSuccess = await this.userSystem.loadFromStorage(userPassword);
+                        } catch (error) {
+                            console.error('Failed with user password:', error);
+                        }
+                    }
                 }
                 
                 if (!loadSuccess) {
@@ -1854,6 +1877,9 @@
                     this.showSecuritySetup();
                     return;
                 }
+                
+                // Hide setup modal if it's showing
+                this.hideSecuritySetup();
                 
                 this.e2e = new E2EEncryption(this.userSystem);
                 await this.e2e.loadState();
@@ -1868,6 +1894,10 @@
 
             showSecuritySetup() {
                 document.getElementById('securitySetupModal').style.display = 'flex';
+            }
+
+            hideSecuritySetup() {
+                document.getElementById('securitySetupModal').style.display = 'none';
             }
 
             async initializePeer() {
@@ -2779,15 +2809,13 @@
                 // Download key file using the proper method
                 await userSystem.downloadKeyFile(password);
                 
-                // Hide setup modal
-                document.getElementById('securitySetupModal').style.display = 'none';
-                
-                // Initialize messenger
-                initializeMessenger();
-                
                 console.log('✅ Secure identity created:', username);
                 
-                // Show success message
+                // Hide setup modal and initialize messenger
+                document.getElementById('securitySetupModal').style.display = 'none';
+                await initializeMessenger();
+                
+                // Show success message after initialization
                 setTimeout(() => {
                     if (window.secureMessenger) {
                         window.secureMessenger.showToast('success', '🎉 Identity Created!', 
@@ -2893,15 +2921,13 @@
                 // Save to storage with the same password
                 await userSystem.saveToStorage(password);
                 
-                // Hide setup modal
-                document.getElementById('securitySetupModal').style.display = 'none';
-                
-                // Initialize messenger
-                initializeMessenger();
-                
                 console.log('✅ Identity imported:', userSystem.username);
                 
-                // Show success toast
+                // Hide setup modal and initialize messenger
+                document.getElementById('securitySetupModal').style.display = 'none';
+                await initializeMessenger();
+                
+                // Show success toast after initialization
                 setTimeout(() => {
                     if (window.secureMessenger) {
                         window.secureMessenger.showToast('success', '🎉 Identity Imported!', 
@@ -2914,14 +2940,14 @@
                 
                 // Show specific error message
                 document.getElementById('importStatus').textContent = error.message;
-                document.getElementById('importStatus').style.color = '#ff6b6b';
-                document.getElementById('importProgressFill').style.background = '#ff6b6b';
+                document.getElementById('importStatus').style.color = '#d1242f';
+                document.getElementById('importProgressFill').style.background = '#d1242f';
                 
                 // Reset after 3 seconds
                 setTimeout(() => {
                     document.getElementById('importProgress').style.display = 'none';
-                    document.getElementById('importStatus').style.color = '#e9edef';
-                    document.getElementById('importProgressFill').style.background = 'linear-gradient(90deg, #00d4aa, #00a084)';
+                    document.getElementById('importStatus').style.color = '#e6edf3';
+                    document.getElementById('importProgressFill').style.background = 'linear-gradient(90deg, #238636, #2ea043)';
                 }, 3000);
             }
         }
@@ -3271,7 +3297,13 @@ Add this username to start ultra-secure messaging!`;
             // For testing: uncomment to clear storage and test setup flow
             // localStorage.clear();
             
-            await initializeMessenger();
+            try {
+                await initializeMessenger();
+            } catch (error) {
+                console.error('Failed to initialize messenger:', error);
+                // If initialization fails, make sure setup modal is visible
+                document.getElementById('securitySetupModal').style.display = 'flex';
+            }
         });
 
         // Close modals when clicking outside
