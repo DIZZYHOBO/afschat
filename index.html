@@ -1455,6 +1455,10 @@
                     return true;
                 } catch (error) {
                     console.error('❌ Failed to decrypt identity:', error);
+                    // If decryption fails, it might be due to wrong password or corrupted data
+                    if (error.name === 'OperationError' || error.message.includes('decrypt')) {
+                        console.log('Decryption failed - likely wrong password or corrupted data');
+                    }
                     return false;
                 }
             }
@@ -1834,8 +1838,19 @@
                     return;
                 }
                 
-                const loadSuccess = await this.userSystem.loadFromStorage('demo');
+                // Try to load with demo password first, but handle failures gracefully
+                let loadSuccess = false;
+                try {
+                    loadSuccess = await this.userSystem.loadFromStorage('demo');
+                } catch (error) {
+                    console.log('Failed to load with demo password, showing setup');
+                    loadSuccess = false;
+                }
+                
                 if (!loadSuccess) {
+                    // Clear corrupted data and show setup
+                    localStorage.removeItem('hasSecureIdentity');
+                    localStorage.removeItem('cryptoUsername');
                     this.showSecuritySetup();
                     return;
                 }
@@ -2875,7 +2890,7 @@
                 
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
-                // Save to storage
+                // Save to storage with the same password
                 await userSystem.saveToStorage(password);
                 
                 // Hide setup modal
@@ -2885,6 +2900,14 @@
                 initializeMessenger();
                 
                 console.log('✅ Identity imported:', userSystem.username);
+                
+                // Show success toast
+                setTimeout(() => {
+                    if (window.secureMessenger) {
+                        window.secureMessenger.showToast('success', '🎉 Identity Imported!', 
+                            `Your secure identity ${userSystem.username} has been successfully imported.`);
+                    }
+                }, 1000);
                 
             } catch (error) {
                 console.error('Failed to import identity:', error);
