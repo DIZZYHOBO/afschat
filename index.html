@@ -2186,10 +2186,16 @@
                 // Generate ephemeral key
                 const ephemeralKey = await CryptoUtils.generateCurve25519KeyPair();
                 
+                // Convert ArrayBuffer to Uint8Array if needed
+                const identityKeyData = bundleData.identityKey instanceof ArrayBuffer ? 
+                    bundleData.identityKey : new Uint8Array(bundleData.identityKey);
+                const signedPreKeyData = bundleData.signedPreKey.publicKey instanceof ArrayBuffer ? 
+                    bundleData.signedPreKey.publicKey : new Uint8Array(bundleData.signedPreKey.publicKey);
+                
                 // Import remote keys
                 const remoteIdentityKey = await crypto.subtle.importKey(
                     'raw',
-                    bundleData.identityKey,
+                    identityKeyData,
                     { name: 'ECDH', namedCurve: 'P-256' },
                     false,
                     []
@@ -2197,7 +2203,7 @@
                 
                 const remoteSignedPreKey = await crypto.subtle.importKey(
                     'raw',
-                    bundleData.signedPreKey.publicKey,
+                    signedPreKeyData,
                     { name: 'ECDH', namedCurve: 'P-256' },
                     false,
                     []
@@ -2205,13 +2211,20 @@
 
                 // Select and remove one-time prekey
                 const oneTimePreKey = bundleData.oneTimePreKeys[0];
-                const remoteOneTimePreKey = oneTimePreKey ? await crypto.subtle.importKey(
-                    'raw',
-                    oneTimePreKey.publicKey,
-                    { name: 'ECDH', namedCurve: 'P-256' },
-                    false,
-                    []
-                ) : null;
+                let remoteOneTimePreKey = null;
+                
+                if (oneTimePreKey) {
+                    const oneTimeKeyData = oneTimePreKey.publicKey instanceof ArrayBuffer ?
+                        oneTimePreKey.publicKey : new Uint8Array(oneTimePreKey.publicKey);
+                    
+                    remoteOneTimePreKey = await crypto.subtle.importKey(
+                        'raw',
+                        oneTimeKeyData,
+                        { name: 'ECDH', namedCurve: 'P-256' },
+                        false,
+                        []
+                    );
+                }
 
                 // Perform ECDH operations
                 const dh1 = await CryptoUtils.ecdh(this.identityKey.privateKey, remoteSignedPreKey);
@@ -2246,10 +2259,14 @@
             async acceptKeyAgreement(ephemeralPublicKey, oneTimePreKeyId) {
                 console.log('🤝 Accepting X3DH key agreement...');
                 
+                // Convert ArrayBuffer to Uint8Array if needed
+                const ephemeralKeyData = ephemeralPublicKey instanceof ArrayBuffer ?
+                    ephemeralPublicKey : new Uint8Array(ephemeralPublicKey);
+                
                 // Import ephemeral key
                 const remoteEphemeralKey = await crypto.subtle.importKey(
                     'raw',
-                    ephemeralPublicKey,
+                    ephemeralKeyData,
                     { name: 'ECDH', namedCurve: 'P-256' },
                     false,
                     []
@@ -2326,10 +2343,14 @@
                 
                 this.remoteDHPublicKey = remoteDHPublicKey;
                 
+                // Convert ArrayBuffer to Uint8Array if needed
+                const remoteKeyData = remoteDHPublicKey instanceof ArrayBuffer ?
+                    remoteDHPublicKey : new Uint8Array(remoteDHPublicKey);
+                
                 // Import remote DH public key
                 const remoteKey = await crypto.subtle.importKey(
                     'raw',
-                    remoteDHPublicKey,
+                    remoteKeyData,
                     { name: 'ECDH', namedCurve: 'P-256' },
                     false,
                     []
@@ -2414,10 +2435,14 @@
                 
                 const { header, iv, ciphertext } = encryptedMessage;
                 
+                // Convert header.dhPublicKey to proper format
+                const headerDHKey = header.dhPublicKey instanceof ArrayBuffer ?
+                    header.dhPublicKey : new Uint8Array(header.dhPublicKey);
+                
                 // Check if we need to perform DH ratchet
                 if (!this.remoteDHPublicKey || 
-                    !this.arraysEqual(header.dhPublicKey, this.remoteDHPublicKey)) {
-                    await this.dhRatchet(header.dhPublicKey);
+                    !this.arraysEqual(headerDHKey, this.remoteDHPublicKey)) {
+                    await this.dhRatchet(headerDHKey);
                 }
 
                 // Try to decrypt with receiving chain
@@ -2428,16 +2453,15 @@
                     messageKey = kdfOutput.messageKey;
                 } else {
                     // Initialize receiving chain
-                    const dhOutput = await CryptoUtils.ecdh(
-                        this.dhKeyPair.privateKey,
-                        await crypto.subtle.importKey(
-                            'raw',
-                            header.dhPublicKey,
-                            { name: 'ECDH', namedCurve: 'P-256' },
-                            false,
-                            []
-                        )
+                    const remoteKey = await crypto.subtle.importKey(
+                        'raw',
+                        headerDHKey,
+                        { name: 'ECDH', namedCurve: 'P-256' },
+                        false,
+                        []
                     );
+                    
+                    const dhOutput = await CryptoUtils.ecdh(this.dhKeyPair.privateKey, remoteKey);
                     const kdfOutput = await this.kdfRK(this.rootKey, dhOutput);
                     this.receivingChain = kdfOutput.chainKey;
                     
@@ -2466,9 +2490,17 @@
             // Helper function to compare arrays
             arraysEqual(a, b) {
                 if (!a || !b) return false;
-                if (a.length !== b.length) return false;
-                for (let i = 0; i < a.length; i++) {
-                    if (a[i] !== b[i]) return false;
+                
+                // Handle different data types
+                const arrayA = a instanceof ArrayBuffer ? new Uint8Array(a) : 
+                              Array.isArray(a) ? new Uint8Array(a) : a;
+                const arrayB = b instanceof ArrayBuffer ? new Uint8Array(b) : 
+                              Array.isArray(b) ? new Uint8Array(b) : b;
+                
+                if (arrayA.length !== arrayB.length) return false;
+                
+                for (let i = 0; i < arrayA.length; i++) {
+                    if (arrayA[i] !== arrayB[i]) return false;
                 }
                 return true;
             }
