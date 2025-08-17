@@ -141,9 +141,9 @@
 
         /* Notifications Dropdown */
         .notifications-dropdown {
-            position: absolute;
-            top: 100%;
-            right: 0;
+            position: fixed;
+            top: 60px;
+            right: 20px;
             width: 320px;
             background: #161b22;
             border: 1px solid #30363d;
@@ -2244,6 +2244,7 @@
 
             handleContactRequest(data, fromUsername) {
                 console.log('📩 Contact request received from:', fromUsername);
+                console.log('Request data:', data);
                 
                 // Don't show request if already contacts
                 if (this.contacts.has(fromUsername)) {
@@ -2258,18 +2259,24 @@
                 }
 
                 // Store the request
-                this.contactRequests.set(fromUsername, {
+                const request = {
                     username: fromUsername,
                     displayName: data.displayName || fromUsername.split('_')[0],
                     publicKey: data.publicKey,
                     timestamp: Date.now()
-                });
+                };
+                
+                this.contactRequests.set(fromUsername, request);
+                console.log('Contact request stored:', request);
+                console.log('Total contact requests:', this.contactRequests.size);
 
-                // Update notifications
+                // Update notifications immediately
                 this.updateNotifications();
                 
-                // Show toast notification
-                this.showContactRequestToast(fromUsername, data.displayName || fromUsername.split('_')[0]);
+                // Also show toast notification for immediate attention
+                this.showContactRequestToast(fromUsername, request.displayName);
+                
+                console.log('✅ Contact request processed and notifications updated');
             }
 
             handleContactRequestResponse(data, fromUsername) {
@@ -2450,6 +2457,8 @@
             }
 
             updateNotifications() {
+                console.log('Updating notifications, request count:', this.contactRequests.size);
+                
                 const badge = document.getElementById('notificationBadge');
                 const dropdown = document.getElementById('notificationsList');
                 const requestCount = this.contactRequests.size;
@@ -2457,8 +2466,10 @@
                 // Update notification badge
                 if (requestCount > 0) {
                     badge.style.display = 'block';
+                    console.log('Showing notification badge');
                 } else {
                     badge.style.display = 'none';
+                    console.log('Hiding notification badge');
                 }
                 
                 // Update dropdown content
@@ -2471,7 +2482,10 @@
                     `;
                 } else {
                     dropdown.innerHTML = '';
-                    Array.from(this.contactRequests.values()).forEach(request => {
+                    const requests = Array.from(this.contactRequests.values());
+                    console.log('Creating notification items for:', requests);
+                    
+                    requests.forEach(request => {
                         const notificationItem = this.createNotificationItem(request);
                         dropdown.appendChild(notificationItem);
                     });
@@ -2479,14 +2493,17 @@
             }
 
             createNotificationItem(request) {
+                console.log('Creating notification item for:', request);
+                
                 const div = document.createElement('div');
                 div.className = 'notification-item';
                 
                 const timeAgo = this.getTimeAgo(request.timestamp);
+                const avatarLetter = request.displayName.charAt(0).toUpperCase();
                 
                 div.innerHTML = `
                     <div class="notification-content">
-                        <div class="notification-avatar">${request.displayName.charAt(0).toUpperCase()}</div>
+                        <div class="notification-avatar">${avatarLetter}</div>
                         <div class="notification-text">
                             <strong>${request.displayName}</strong> wants to chat
                         </div>
@@ -2818,18 +2835,31 @@
                 // Add long press functionality
                 let longPressTimer;
                 let isLongPress = false;
+                let startTime = 0;
                 
-                const startLongPress = () => {
+                const startLongPress = (e) => {
+                    startTime = Date.now();
                     isLongPress = false;
                     longPressTimer = setTimeout(() => {
                         isLongPress = true;
                         div.classList.add('long-press-active', 'show-actions');
+                        // Prevent the click from firing
+                        e.preventDefault();
+                        e.stopPropagation();
                     }, 500);
                 };
                 
-                const endLongPress = () => {
+                const endLongPress = (e) => {
                     clearTimeout(longPressTimer);
-                    if (!isLongPress) {
+                    const duration = Date.now() - startTime;
+                    
+                    if (isLongPress || duration >= 500) {
+                        // Was a long press, don't open chat
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    } else {
+                        // Was a short press, open chat
                         div.classList.remove('long-press-active', 'show-actions');
                         this.openChat(contact.username);
                     }
@@ -2838,15 +2868,20 @@
                 const cancelLongPress = () => {
                     clearTimeout(longPressTimer);
                     div.classList.remove('long-press-active', 'show-actions');
+                    isLongPress = false;
                 };
                 
                 // Mouse events
                 div.addEventListener('mousedown', startLongPress);
                 div.addEventListener('mouseup', endLongPress);
                 div.addEventListener('mouseleave', cancelLongPress);
+                div.addEventListener('contextmenu', (e) => e.preventDefault()); // Prevent right-click menu
                 
                 // Touch events for mobile
-                div.addEventListener('touchstart', startLongPress);
+                div.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    startLongPress(e);
+                });
                 div.addEventListener('touchend', endLongPress);
                 div.addEventListener('touchcancel', cancelLongPress);
                 
@@ -2920,10 +2955,12 @@
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-chat-btn';
                 deleteBtn.textContent = 'Delete';
-                deleteBtn.onclick = (e) => {
+                deleteBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
+                    e.preventDefault();
+                    console.log('Delete button clicked for:', contact.username);
                     this.deleteChat(contact.username);
-                };
+                });
                 
                 actions.appendChild(deleteBtn);
                 
@@ -2942,40 +2979,68 @@
             }
 
             deleteChat(username) {
-                if (confirm('Are you sure you want to delete this chat? This will remove the contact and all messages.')) {
-                    // Remove contact
-                    this.contacts.delete(username);
-                    this.saveContacts();
+                console.log('Attempting to delete chat for:', username);
+                
+                const contact = this.contacts.get(username);
+                if (!contact) {
+                    console.error('Contact not found:', username);
+                    return;
+                }
+                
+                const confirmMessage = `Are you sure you want to delete the chat with ${contact.displayName}?\n\nThis will:\n• Remove the contact\n• Delete all messages\n• Close the connection\n\nThis action cannot be undone.`;
+                
+                if (confirm(confirmMessage)) {
+                    console.log('User confirmed deletion for:', username);
                     
-                    // Remove messages
-                    this.chatMessages.delete(username);
-                    this.saveMessages();
-                    
-                    // Close connection
-                    const conn = this.connections.get(username);
-                    if (conn && conn.open) {
-                        conn.close();
+                    try {
+                        // Remove contact
+                        this.contacts.delete(username);
+                        this.saveContacts();
+                        console.log('Contact removed from storage');
+                        
+                        // Remove messages
+                        this.chatMessages.delete(username);
+                        this.saveMessages();
+                        console.log('Messages removed from storage');
+                        
+                        // Close connection
+                        const conn = this.connections.get(username);
+                        if (conn && conn.open) {
+                            conn.close();
+                            console.log('Connection closed');
+                        }
+                        this.connections.delete(username);
+                        
+                        // Remove E2E conversation
+                        if (this.e2e) {
+                            this.e2e.conversations.delete(username);
+                            this.e2e.sessionKeys.delete(username);
+                            this.e2e.saveState();
+                            console.log('E2E conversation removed');
+                        }
+                        
+                        // If this was the current chat, go back to welcome screen
+                        if (this.currentChatUsername === username) {
+                            this.currentChatUsername = null;
+                            document.getElementById('welcomeScreen').style.display = 'flex';
+                            document.getElementById('chatHeader').style.display = 'none';
+                            document.getElementById('messagesArea').style.display = 'none';
+                            document.getElementById('messageInputArea').style.display = 'none';
+                            console.log('Returned to welcome screen');
+                        }
+                        
+                        // Update contacts list
+                        this.updateContactsList();
+                        console.log('Contacts list updated');
+                        
+                        this.showToast('success', '🗑️ Chat Deleted', `Chat with ${contact.displayName} has been deleted.`);
+                        
+                    } catch (error) {
+                        console.error('Error deleting chat:', error);
+                        this.showToast('error', '❌ Delete Failed', 'Failed to delete chat. Please try again.');
                     }
-                    this.connections.delete(username);
-                    
-                    // Remove E2E conversation
-                    this.e2e.conversations.delete(username);
-                    this.e2e.sessionKeys.delete(username);
-                    this.e2e.saveState();
-                    
-                    // If this was the current chat, go back to welcome screen
-                    if (this.currentChatUsername === username) {
-                        this.currentChatUsername = null;
-                        document.getElementById('welcomeScreen').style.display = 'flex';
-                        document.getElementById('chatHeader').style.display = 'none';
-                        document.getElementById('messagesArea').style.display = 'none';
-                        document.getElementById('messageInputArea').style.display = 'none';
-                    }
-                    
-                    // Update contacts list
-                    this.updateContactsList();
-                    
-                    this.showToast('success', '🗑️ Chat Deleted', 'Contact and messages have been removed.');
+                } else {
+                    console.log('User cancelled deletion');
                 }
             }
 
@@ -3455,8 +3520,11 @@
 
         // Global functions for notifications
         function toggleNotifications() {
+            console.log('Toggle notifications clicked');
             const dropdown = document.getElementById('notificationsDropdown');
             const isVisible = dropdown.style.display === 'block';
+            
+            console.log('Dropdown current state:', isVisible ? 'visible' : 'hidden');
             
             // Close all other dropdowns first
             document.querySelectorAll('.notifications-dropdown').forEach(d => {
@@ -3464,10 +3532,13 @@
             });
             
             dropdown.style.display = isVisible ? 'none' : 'block';
+            console.log('Dropdown new state:', dropdown.style.display);
         }
 
         function clearAllNotifications() {
+            console.log('Clear all notifications clicked');
             if (secureMessenger) {
+                console.log('Clearing', secureMessenger.contactRequests.size, 'notifications');
                 secureMessenger.contactRequests.clear();
                 secureMessenger.updateNotifications();
                 secureMessenger.showToast('info', '🧹 Notifications Cleared', 'All notifications have been cleared.');
@@ -3475,6 +3546,7 @@
         }
 
         function acceptContactRequestFromNotification(username) {
+            console.log('Accept contact request from notification:', username);
             if (secureMessenger) {
                 secureMessenger.acceptContactRequest(username);
                 // Close dropdown after action
@@ -3483,6 +3555,7 @@
         }
 
         function denyContactRequestFromNotification(username) {
+            console.log('Deny contact request from notification:', username);
             if (secureMessenger) {
                 secureMessenger.denyContactRequest(username);
                 // Close dropdown after action
