@@ -1631,15 +1631,17 @@
             async saveToStorage(password) {
                 const keyData = {
                     username: this.username,
-                    passwordHash: await this.hashPassword(password), // Store hash for verification
+                    passwordHash: await this.hashPassword(password),
                     keyPair: this.keyPair ? 'generated' : null,
-                    created: Date.now()
+                    created: Date.now(),
+                    version: '2.0' // Updated version to track new format
                 };
                 
                 // Encrypt with password
                 const encrypted = await this.encryptData(JSON.stringify(keyData), password);
                 localStorage.setItem('cryptoUsername', encrypted);
                 localStorage.setItem('hasSecureIdentity', 'true');
+                localStorage.setItem('lastPassword', await this.hashPassword(password)); // Store password hash for quick validation
                 
                 console.log('💾 Identity saved with password protection');
             }
@@ -1875,6 +1877,7 @@
                 this.deviceFingerprint = null;
                 localStorage.removeItem('cryptoUsername');
                 localStorage.removeItem('hasSecureIdentity');
+                localStorage.removeItem('lastPassword'); // Clear password hash too
                 console.log('🚪 Identity cleared');
             }
         }
@@ -2083,19 +2086,40 @@
                     return;
                 }
                 
-                // Try to load with the default password and common passwords
+                // Try to load with smart password detection
                 let loadSuccess = false;
-                const passwords = ['secure_password_123', 'demo', 'password', 'test123'];
+                
+                // First, try to determine the correct password from last successful login
+                const lastPasswordHash = localStorage.getItem('lastPassword');
+                const passwords = ['secure_password_123']; // Default password for new accounts
+                
+                // Add common passwords for imported accounts
+                if (!lastPasswordHash) {
+                    passwords.push('demo', 'password', 'test123');
+                }
                 
                 for (const pwd of passwords) {
                     try {
+                        // Quick hash check first if we have a stored hash
+                        if (lastPasswordHash) {
+                            const currentHash = await this.userSystem.hashPassword(pwd);
+                            if (currentHash !== lastPasswordHash) {
+                                continue; // Skip if hash doesn't match
+                            }
+                        }
+                        
                         loadSuccess = await this.userSystem.loadFromStorage(pwd);
                         if (loadSuccess) {
                             console.log(`✅ Identity loaded with password: ${pwd}`);
+                            // Update the stored hash for next time
+                            localStorage.setItem('lastPassword', await this.userSystem.hashPassword(pwd));
                             break;
                         }
                     } catch (error) {
-                        console.log(`Failed to load with password "${pwd}":`, error.message);
+                        // Only log if it's not the expected decryption error
+                        if (!error.message.includes('decrypt') && !error.message.includes('operation-specific')) {
+                            console.log(`Failed to load with password "${pwd}":`, error.message);
+                        }
                     }
                 }
                 
@@ -2105,6 +2129,10 @@
                     if (userPassword) {
                         try {
                             loadSuccess = await this.userSystem.loadFromStorage(userPassword);
+                            if (loadSuccess) {
+                                // Store the successful password hash for next time
+                                localStorage.setItem('lastPassword', await this.userSystem.hashPassword(userPassword));
+                            }
                         } catch (error) {
                             console.error('Failed with user password:', error);
                         }
@@ -2115,6 +2143,7 @@
                     // Clear corrupted data and show setup
                     localStorage.removeItem('hasSecureIdentity');
                     localStorage.removeItem('cryptoUsername');
+                    localStorage.removeItem('lastPassword');
                     this.showSecuritySetup();
                     return;
                 }
@@ -3573,7 +3602,7 @@
                 
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
-                // Save to storage with the same password
+                // Save to storage with the same password and store password hash
                 await userSystem.saveToStorage(password);
                 
                 console.log('✅ Identity imported:', userSystem.username);
