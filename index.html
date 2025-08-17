@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ultra Secure P2P Messenger</title>
+    <title>AFSChat</title>
     <style>
         * {
             margin: 0;
@@ -1443,7 +1443,7 @@
                     </div>
                 </button>
                 <div class="app-title">
-                    Ultra Secure Messenger
+                    AFSChat
                     <div class="connection-status status-offline" id="connectionStatus">Initializing...</div>
                 </div>
             </div>
@@ -2078,7 +2078,7 @@
             }
 
             async initialize() {
-                console.log('🔐 Initializing Ultra Secure Messenger...');
+                console.log('🔐 Initializing AFSChat...');
                 
                 const hasIdentity = localStorage.getItem('hasSecureIdentity');
                 if (!hasIdentity) {
@@ -2159,7 +2159,7 @@
                 this.loadMessages();
                 this.updateUI();
                 
-                console.log('✅ Ultra Secure Messenger initialized');
+                console.log('✅ AFSChat initialized');
             }
 
             showSecuritySetup() {
@@ -3840,7 +3840,7 @@
                 const username = secureMessenger.userSystem.username;
                 const fingerprint = document.getElementById('publicKeyFingerprint').textContent;
                 
-                const textToCopy = `Ultra Secure Messenger Contact:
+                const textToCopy = `AFSChat Contact:
 Username: ${username}
 Public Key Fingerprint: ${fingerprint}
 
@@ -4030,7 +4030,7 @@ Add this username to start ultra-secure messaging!`;
 
         // Initialize app
         window.addEventListener('load', async () => {
-            console.log('🚀 Starting Ultra Secure P2P Messenger...');
+            console.log('🚀 Starting AFSChat...');
             
             setupDragAndDrop();
             
@@ -4108,7 +4108,7 @@ Add this username to start ultra-secure messaging!`;
             });
         }
 
-        console.log('✅ Ultra Secure Messenger loaded and ready');
+        console.log('✅ AFSChat loaded and ready');
     </script>
 </body>
 </html>
