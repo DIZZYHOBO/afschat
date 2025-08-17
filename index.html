@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AFSChat</title>
+    <title>Ultra Secure P2P Messenger</title>
     <style>
         * {
             margin: 0;
@@ -2173,6 +2173,18 @@
                 
                 conn.on('open', () => {
                     console.log('✅ Connection opened with:', contactUsername);
+                    
+                    // Check if this is a replacement for an existing connection
+                    const existingConn = this.connections.get(contactUsername);
+                    if (existingConn && existingConn !== conn) {
+                        console.log('🔄 Replacing existing connection for:', contactUsername);
+                        try {
+                            existingConn.close();
+                        } catch (e) {
+                            console.warn('Error closing old connection:', e);
+                        }
+                    }
+                    
                     this.connections.set(contactUsername, conn);
                     this.updateContactStatus(contactUsername, true);
                     
@@ -2761,29 +2773,50 @@
             }
 
             async connectToContact(username) {
-                if (this.connections.has(username)) {
-                    const existingConn = this.connections.get(username);
+                // Check for existing connection
+                const existingConn = this.connections.get(username);
+                if (existingConn) {
                     if (existingConn.open) {
                         console.log('✅ Using existing connection to:', username);
                         return existingConn;
                     } else {
                         // Remove stale connection
+                        console.log('🧹 Removing stale connection to:', username);
                         this.connections.delete(username);
                     }
                 }
 
                 console.log('🔗 Creating new connection to:', username);
-                const conn = this.peer.connect(username);
+                const conn = this.peer.connect(username, {
+                    reliable: true,
+                    serialization: 'json'
+                });
                 
                 return new Promise((resolve, reject) => {
                     const timeout = setTimeout(() => {
                         console.error('⏰ Connection timeout to:', username);
+                        try {
+                            conn.close();
+                        } catch (e) {
+                            // Ignore errors when closing
+                        }
                         reject(new Error('Connection timeout'));
-                    }, 10000); // 10 second timeout
+                    }, 15000); // Increased timeout for better reliability
                     
                     conn.on('open', () => {
                         clearTimeout(timeout);
                         console.log('✅ Connection established to:', username);
+                        
+                        // If there was an existing connection, close it
+                        const oldConn = this.connections.get(username);
+                        if (oldConn && oldConn !== conn) {
+                            try {
+                                oldConn.close();
+                            } catch (e) {
+                                console.warn('Error closing old connection:', e);
+                            }
+                        }
+                        
                         this.connections.set(username, conn);
                         this.updateContactStatus(username, true);
                         
@@ -3660,20 +3693,24 @@
                 // First, ensure we can establish a connection
                 secureMessenger.updateConnectionStatus('connecting');
                 
-                // Try to establish connection first
+                // Try to establish connection first - this will handle connection replacement
                 const conn = await secureMessenger.connectToContact(username);
                 
                 if (conn && conn.open) {
                     console.log('✅ Connection established, sending contact request...');
                     
-                    // Send contact request
+                    // Wait a moment to ensure connection is stable
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    // Send contact request with additional metadata to help with reconnections
                     const requestData = {
                         type: 'contact_request',
                         from: secureMessenger.userSystem.username,
                         displayName: secureMessenger.userSystem.username.split('_')[0],
                         publicKey: await secureMessenger.userSystem.getPublicKeyForSharing(),
                         timestamp: Date.now(),
-                        message: `${secureMessenger.userSystem.username.split('_')[0]} wants to connect`
+                        message: `${secureMessenger.userSystem.username.split('_')[0]} wants to connect`,
+                        reconnection: true // Flag to indicate this might be a reconnection
                     };
                     
                     console.log('Sending request data:', requestData);
