@@ -295,6 +295,7 @@
             opacity: 0;
             transition: opacity 0.2s;
             pointer-events: none;
+            z-index: 10;
         }
 
         .chat-item.show-actions .chat-item-actions {
@@ -312,10 +313,17 @@
             font-size: 11px;
             font-weight: 500;
             transition: all 0.2s;
+            position: relative;
+            z-index: 11;
         }
 
         .delete-chat-btn:hover {
             background: #da3633;
+            transform: scale(1.05);
+        }
+
+        .delete-chat-btn:active {
+            transform: scale(0.95);
         }
 
         .search-bar {
@@ -2836,16 +2844,24 @@
                 let longPressTimer;
                 let isLongPress = false;
                 let startTime = 0;
+                let isDragging = false;
                 
                 const startLongPress = (e) => {
+                    // Don't start long press if clicking on action buttons
+                    if (e.target.closest('.chat-item-actions')) {
+                        return;
+                    }
+                    
                     startTime = Date.now();
                     isLongPress = false;
+                    isDragging = false;
+                    
                     longPressTimer = setTimeout(() => {
-                        isLongPress = true;
-                        div.classList.add('long-press-active', 'show-actions');
-                        // Prevent the click from firing
-                        e.preventDefault();
-                        e.stopPropagation();
+                        if (!isDragging) {
+                            isLongPress = true;
+                            div.classList.add('long-press-active', 'show-actions');
+                            console.log('Long press activated for:', contact.username);
+                        }
                     }, 500);
                 };
                 
@@ -2853,13 +2869,17 @@
                     clearTimeout(longPressTimer);
                     const duration = Date.now() - startTime;
                     
+                    // Don't do anything if clicking on action buttons
+                    if (e.target.closest('.chat-item-actions')) {
+                        return;
+                    }
+                    
                     if (isLongPress || duration >= 500) {
                         // Was a long press, don't open chat
-                        e.preventDefault();
-                        e.stopPropagation();
-                        return false;
-                    } else {
-                        // Was a short press, open chat
+                        console.log('Long press detected, not opening chat');
+                        return;
+                    } else if (!isDragging) {
+                        // Was a short press and not dragging, open chat
                         div.classList.remove('long-press-active', 'show-actions');
                         this.openChat(contact.username);
                     }
@@ -2867,23 +2887,35 @@
                 
                 const cancelLongPress = () => {
                     clearTimeout(longPressTimer);
-                    div.classList.remove('long-press-active', 'show-actions');
                     isLongPress = false;
+                    isDragging = false;
+                };
+                
+                const handleMove = () => {
+                    isDragging = true;
+                    cancelLongPress();
                 };
                 
                 // Mouse events
                 div.addEventListener('mousedown', startLongPress);
                 div.addEventListener('mouseup', endLongPress);
-                div.addEventListener('mouseleave', cancelLongPress);
-                div.addEventListener('contextmenu', (e) => e.preventDefault()); // Prevent right-click menu
+                div.addEventListener('mouseleave', () => {
+                    cancelLongPress();
+                    // Keep actions visible when mouse leaves if already showing
+                    if (!div.classList.contains('show-actions')) {
+                        div.classList.remove('long-press-active');
+                    }
+                });
+                div.addEventListener('mousemove', handleMove);
+                div.addEventListener('contextmenu', (e) => e.preventDefault());
                 
                 // Touch events for mobile
                 div.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
                     startLongPress(e);
                 });
                 div.addEventListener('touchend', endLongPress);
                 div.addEventListener('touchcancel', cancelLongPress);
+                div.addEventListener('touchmove', handleMove);
                 
                 const avatar = document.createElement('div');
                 avatar.className = 'chat-avatar';
@@ -2955,11 +2987,32 @@
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-chat-btn';
                 deleteBtn.textContent = 'Delete';
+                
+                // Prevent all event bubbling for the delete button
                 deleteBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
+                    e.stopImmediatePropagation();
                     e.preventDefault();
                     console.log('Delete button clicked for:', contact.username);
-                    this.deleteChat(contact.username);
+                    
+                    // Hide the actions first
+                    div.classList.remove('long-press-active', 'show-actions');
+                    
+                    // Small delay to ensure UI updates before showing confirm dialog
+                    setTimeout(() => {
+                        this.deleteChat(contact.username);
+                    }, 100);
+                });
+                
+                // Also prevent mouse events from bubbling
+                deleteBtn.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                });
+                
+                deleteBtn.addEventListener('mouseup', (e) => {
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
                 });
                 
                 actions.appendChild(deleteBtn);
