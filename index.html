@@ -4,6 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AFSChat</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Military-grade encrypted P2P messaging with perfect forward secrecy">
+    <meta name="theme-color" content="#238636">
+    <meta name="background-color" content="#0d1117">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Apple PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AFSChat">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png">
+    
+    <!-- Microsoft PWA Meta Tags -->
+    <meta name="msapplication-TileColor" content="#238636">
+    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png">
+    <meta name="msapplication-config" content="/browserconfig.xml">
+    
+    <!-- Standard Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png">
+    <link rel="shortcut icon" href="/favicon.ico">
     <style>
         * {
             margin: 0;
@@ -1603,6 +1628,9 @@
 
     <!-- PeerJS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.0/dist/peerjs.min.js"></script>
+    
+    <!-- PWA Installer Script -->
+    <script src="/pwa-installer.js"></script>
 
     <script>
         // Crypto Username System (enhanced for demo)
@@ -2275,7 +2303,16 @@
                     if (conn && conn.open) {
                         console.log('📤 Sending message:', encryptedMessage.type);
                         conn.send(encryptedMessage);
-                        this.addMessageToChat(this.currentChatUsername, encryptedMessage, true);
+                        
+                        // Create a proper message object for sender's display
+                        const displayMessage = {
+                            ...encryptedMessage,
+                            text: message, // Ensure the original text is preserved for display
+                            timestamp: Date.now(),
+                            from: this.userSystem.username
+                        };
+                        
+                        this.addMessageToChat(this.currentChatUsername, displayMessage, true);
                         this.securityMetrics.messagesSent++;
                         
                         input.value = '';
@@ -2737,11 +2774,22 @@
                     this.chatMessages.set(username, []);
                 }
                 
+                // Ensure we have the message text for display
+                const messageText = messageData.text || messageData.message || 'Message';
+                
                 const message = {
                     ...messageData,
+                    text: messageText, // Ensure text is always available
                     isSent: isSent,
                     id: Date.now() + Math.random()
                 };
+                
+                console.log('💬 Adding message to chat:', { 
+                    username, 
+                    text: messageText, 
+                    isSent, 
+                    type: messageData.type 
+                });
                 
                 this.chatMessages.get(username).push(message);
                 this.saveMessages();
@@ -2751,7 +2799,6 @@
                 }
                 
                 // Safely update contact last message
-                const messageText = messageData.text || messageData.message || 'Message';
                 this.updateContactLastMessage(username, messageText);
             }
 
@@ -2762,7 +2809,10 @@
                 
                 const bubble = document.createElement('div');
                 bubble.className = 'message-bubble';
-                bubble.textContent = message.text;
+                
+                // Safely extract message text
+                const messageText = message.text || message.message || 'Message';
+                bubble.textContent = messageText;
                 
                 const security = document.createElement('div');
                 security.className = 'message-security';
@@ -2799,6 +2849,12 @@
                 messagesArea.appendChild(messageDiv);
                 
                 messagesArea.scrollTop = messagesArea.scrollHeight;
+                
+                console.log('📱 Message displayed:', { 
+                    text: messageText, 
+                    isSent: message.isSent, 
+                    securityLevel: message.securityLevel 
+                });
             }
 
             async connectToContact(username) {
