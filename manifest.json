@@ -1,7 +1,7 @@
 {
   "name": "AFSChat - Ultra Secure Messenger",
   "short_name": "AFSChat",
-  "description": "Military-grade encrypted P2P messaging with perfect forward secrecy",
+  "description": "Military-grade encrypted peer-to-peer messaging with perfect forward secrecy",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0d1117",
@@ -10,51 +10,67 @@
   "scope": "/",
   "lang": "en",
   "categories": ["communication", "security", "social"],
+  "screenshots": [
+    {
+      "src": "/screenshots/mobile-chat.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "AFSChat mobile interface"
+    },
+    {
+      "src": "/screenshots/desktop-chat.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "AFSChat desktop interface"
+    }
+  ],
   "icons": [
     {
-      "src": "icons/icon-72x72.png",
+      "src": "/icons/icon-72x72.png",
       "sizes": "72x72",
       "type": "image/png",
       "purpose": "maskable any"
     },
     {
-      "src": "icons/icon-96x96.png",
+      "src": "/icons/icon-96x96.png",
       "sizes": "96x96",
       "type": "image/png",
       "purpose": "maskable any"
     },
     {
-      "src": "icons/icon-128x128.png",
+      "src": "/icons/icon-128x128.png",
       "sizes": "128x128",
       "type": "image/png",
       "purpose": "maskable any"
     },
     {
-      "src": "icons/icon-144x144.png",
+      "src": "/icons/icon-144x144.png",
       "sizes": "144x144",
       "type": "image/png",
       "purpose": "maskable any"
     },
     {
-      "src": "icons/icon-152x152.png",
+      "src": "/icons/icon-152x152.png",
       "sizes": "152x152",
       "type": "image/png",
       "purpose": "maskable any"
     },
     {
-      "src": "icons/icon-192x192.png",
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable any"
     },
     {
-      "src": "icons/icon-384x384.png",
+      "src": "/icons/icon-384x384.png",
       "sizes": "384x384",
       "type": "image/png",
       "purpose": "maskable any"
     },
     {
-      "src": "icons/icon-512x512.png",
+      "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable any"
@@ -68,8 +84,9 @@
       "url": "/?action=new-chat",
       "icons": [
         {
-          "src": "icons/icon-96x96.png",
-          "sizes": "96x96"
+          "src": "/icons/shortcut-chat.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     },
@@ -80,33 +97,20 @@
       "url": "/?action=add-contact",
       "icons": [
         {
-          "src": "icons/icon-96x96.png",
-          "sizes": "96x96"
+          "src": "/icons/shortcut-add.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     }
   ],
-  "screenshots": [
+  "protocol_handlers": [
     {
-      "src": "screenshots/desktop-1.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "AFSChat desktop interface showing secure messaging"
-    },
-    {
-      "src": "screenshots/mobile-1.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "AFSChat mobile interface with encrypted chat"
+      "protocol": "afschat",
+      "url": "/?contact=%s"
     }
   ],
-  "features": [
-    "Cross Platform",
-    "Background Sync",
-    "Installable"
-  ],
+  "prefer_related_applications": false,
   "edge_side_panel": {
     "preferred_width": 400
   }
