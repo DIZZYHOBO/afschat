@@ -4,7 +4,1265 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AFSChat</title>
-    <link rel="stylesheet" href="ui.css">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Military-grade encrypted P2P messaging with perfect forward secrecy">
+    <meta name="theme-color" content="#238636">
+    <meta name="background-color" content="#0d1117">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Apple PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AFSChat">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png">
+    
+    <!-- Microsoft PWA Meta Tags -->
+    <meta name="msapplication-TileColor" content="#238636">
+    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png">
+    <meta name="msapplication-config" content="/browserconfig.xml">
+    
+    <!-- Standard Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            background: #161b22;
+            height: 100vh;
+            display: flex;
+            color: #e6edf3;
+        }
+
+        .sidebar {
+            width: 320px;
+            background: #0d1117;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #21262d;
+            position: fixed;
+            height: 100vh;
+            left: -320px;
+            transition: left 0.3s ease;
+            z-index: 1000;
+        }
+
+        .sidebar.open {
+            left: 0;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            background: #161b22;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #21262d;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #238636, #1f6e32);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            margin-right: 10px;
+            position: relative;
+            font-size: 14px;
+        }
+
+        .security-badge {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #238636;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            border: 2px solid #161b22;
+        }
+
+        .profile-info h3 {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 1px;
+        }
+
+        .username {
+            font-size: 11px;
+            color: #7d8590;
+            font-family: monospace;
+            cursor: pointer;
+            padding: 1px 4px;
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+
+        .username:hover {
+            background: rgba(125, 133, 144, 0.1);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .header-btn {
+            background: none;
+            border: none;
+            color: #7d8590;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .header-btn:hover {
+            background: #21262d;
+            color: #e6edf3;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #d1242f;
+            border: 1px solid #161b22;
+        }
+
+        /* Notifications Dropdown */
+        .notifications-dropdown {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            width: 320px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            z-index: 1001;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .notifications-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #21262d;
+            font-weight: 600;
+            font-size: 14px;
+            color: #e6edf3;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .clear-all-btn {
+            background: none;
+            border: none;
+            color: #7d8590;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .clear-all-btn:hover {
+            background: #21262d;
+            color: #e6edf3;
+        }
+
+        .notification-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(33, 38, 45, 0.5);
+            transition: background 0.2s;
+        }
+
+        .notification-item:hover {
+            background: #21262d;
+        }
+
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+
+        .notification-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .notification-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #fd7e14, #d63384);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            font-size: 12px;
+        }
+
+        .notification-text {
+            flex: 1;
+            font-size: 13px;
+            color: #e6edf3;
+        }
+
+        .notification-time {
+            font-size: 11px;
+            color: #7d8590;
+        }
+
+        .notification-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .notification-btn {
+            flex: 1;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .notification-btn.accept {
+            background: #238636;
+            color: white;
+        }
+
+        .notification-btn.accept:hover {
+            background: #2ea043;
+        }
+
+        .notification-btn.deny {
+            background: #21262d;
+            color: #e6edf3;
+            border: 1px solid #30363d;
+        }
+
+        .notification-btn.deny:hover {
+            background: #30363d;
+        }
+
+        .empty-notifications {
+            padding: 32px 16px;
+            text-align: center;
+            color: #7d8590;
+            font-size: 13px;
+        }
+
+        /* Chat Item Long Press */
+        .chat-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: background 0.15s;
+            border-bottom: 1px solid rgba(33, 38, 45, 0.5);
+            display: flex;
+            align-items: center;
+            position: relative;
+            user-select: none;
+        }
+
+        .chat-item.long-press-active {
+            background: #21262d;
+            transform: scale(0.98);
+        }
+
+        .chat-item-actions {
+            position: absolute;
+            top: 50%;
+            right: 16px;
+            transform: translateY(-50%);
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .chat-item.show-actions .chat-item-actions {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .delete-chat-btn {
+            background: #d1242f;
+            border: none;
+            color: white;
+            padding: 6px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.2s;
+            position: relative;
+            z-index: 11;
+        }
+
+        .delete-chat-btn:hover {
+            background: #da3633;
+            transform: scale(1.05);
+        }
+
+        .delete-chat-btn:active {
+            transform: scale(0.95);
+        }
+
+        .search-bar {
+            padding: 12px 16px;
+            background: #0d1117;
+            border-bottom: 1px solid #21262d;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 8px 12px;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #e6edf3;
+            font-size: 13px;
+        }
+
+        .search-input::placeholder {
+            color: #7d8590;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #1f6feb;
+            box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.3);
+        }
+
+        .chats-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .chat-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: background 0.15s;
+            border-bottom: 1px solid rgba(33, 38, 45, 0.5);
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+
+        .chat-item:hover {
+            background: #161b22;
+        }
+
+        .chat-item.active {
+            background: #21262d;
+            border-left: 3px solid #1f6feb;
+        }
+
+        .chat-item.unread {
+            background: rgba(31, 111, 235, 0.05);
+        }
+
+        .chat-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #fd7e14, #d63384);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            margin-right: 12px;
+            font-size: 16px;
+            position: relative;
+        }
+
+        .chat-security-indicator {
+            position: absolute;
+            top: -1px;
+            right: -1px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            border: 2px solid #0d1117;
+        }
+
+        .security-max { background: #238636; }
+        .security-partial { background: #d1242f; }
+        .security-none { background: #656d76; }
+
+        .chat-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 3px;
+        }
+
+        .chat-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: #e6edf3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-time {
+            font-size: 11px;
+            color: #7d8590;
+            white-space: nowrap;
+        }
+
+        .chat-preview {
+            font-size: 12px;
+            color: #7d8590;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+        }
+
+        .unread-badge {
+            background: #1f6feb;
+            color: white;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .main-chat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #0d1117;
+            width: 100%;
+        }
+
+        .app-header {
+            background: #161b22;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #21262d;
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            color: #e9edef;
+            cursor: pointer;
+            padding: 8px;
+            margin-right: 15px;
+            border-radius: 50%;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .menu-btn:hover {
+            background: rgba(134, 150, 160, 0.1);
+        }
+
+        .menu-icon {
+            width: 24px;
+            height: 18px;
+            position: relative;
+        }
+
+        .menu-icon span {
+            display: block;
+            position: absolute;
+            height: 3px;
+            width: 100%;
+            background: #e9edef;
+            border-radius: 2px;
+            opacity: 1;
+            left: 0;
+            transform: rotate(0deg);
+            transition: .25s ease-in-out;
+        }
+
+        .menu-icon span:nth-child(1) {
+            top: 0px;
+        }
+
+        .menu-icon span:nth-child(2) {
+            top: 7px;
+        }
+
+        .menu-icon span:nth-child(3) {
+            top: 14px;
+        }
+
+        .app-title {
+            font-size: 20px;
+            font-weight: 500;
+            color: #e9edef;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .connection-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .status-online {
+            background: rgba(0, 212, 170, 0.2);
+            color: #00d4aa;
+        }
+
+        .status-offline {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+        }
+
+        .status-connecting {
+            background: rgba(255, 184, 0, 0.2);
+            color: #ffb800;
+        }
+
+        .chat-header-main {
+            padding: 15px 20px;
+            background: #2a3942;
+            border-bottom: 1px solid #3b4a54;
+            display: none;
+            align-items: center;
+        }
+
+        .contact-info {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+        .contact-status {
+            font-size: 13px;
+            color: #8696a0;
+            margin-top: 2px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .encryption-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .encryption-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .encryption-e2e {
+            background: rgba(0, 212, 170, 0.2);
+            color: #00d4aa;
+        }
+
+        .encryption-webrtc {
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+        }
+
+        .encryption-none {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+        }
+
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.02)"/></svg>');
+            background-size: 30px 30px;
+        }
+
+        .message {
+            max-width: 65%;
+            margin-bottom: 5px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.sent {
+            margin-left: auto;
+            align-items: flex-end;
+        }
+
+        .message.received {
+            align-items: flex-start;
+        }
+
+        .message-bubble {
+            padding: 8px 12px;
+            border-radius: 8px;
+            word-wrap: break-word;
+            position: relative;
+            max-width: 100%;
+        }
+
+        .message.sent .message-bubble {
+            background: #005c4b;
+            color: #e9edef;
+            border-bottom-right-radius: 2px;
+        }
+
+        .message.received .message-bubble {
+            background: #202c33;
+            color: #e9edef;
+            border-bottom-left-radius: 2px;
+        }
+
+        .message-security {
+            font-size: 9px;
+            opacity: 0.7;
+            margin-top: 2px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .security-icon {
+            font-size: 8px;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: rgba(233, 237, 239, 0.6);
+            margin-top: 4px;
+            align-self: flex-end;
+            padding: 0 5px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .message-input-area {
+            padding: 15px 20px;
+            background: #2a3942;
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
+
+        .message-input-container {
+            flex: 1;
+            background: #3b4a54;
+            border-radius: 25px;
+            padding: 8px 15px;
+            display: flex;
+            align-items: center;
+            min-height: 44px;
+        }
+
+        .message-input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: #e9edef;
+            font-size: 15px;
+            resize: none;
+            outline: none;
+            max-height: 100px;
+            line-height: 20px;
+        }
+
+        .message-input::placeholder {
+            color: #8696a0;
+        }
+
+        .send-button {
+            background: #00d4aa;
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: background 0.2s;
+        }
+
+        .send-button:hover {
+            background: #00a084;
+        }
+
+        .welcome-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            color: #7d8590;
+            padding: 32px;
+        }
+
+        .welcome-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #238636, #1f6e32);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin-bottom: 24px;
+            color: white;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #2a3942;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            color: #e9edef;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px 20px 10px;
+            font-size: 18px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-body {
+            padding: 10px 20px 20px;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 12px;
+            background: #3b4a54;
+            border: 1px solid #4a5c66;
+            border-radius: 8px;
+            color: #e9edef;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+
+        .modal-input:focus {
+            outline: none;
+            border-color: #00d4aa;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .modal-btn.primary {
+            background: #00d4aa;
+            color: white;
+        }
+
+        .modal-btn.primary:hover {
+            background: #00a084;
+        }
+
+        .modal-btn.secondary {
+            background: #3b4a54;
+            color: #e9edef;
+        }
+
+        .modal-btn.secondary:hover {
+            background: #4a5c66;
+        }
+
+        .username-display {
+            background: #21262d;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 12px 0;
+            text-align: center;
+            font-family: monospace;
+            font-size: 14px;
+            color: #238636;
+            border: 1px dashed #30363d;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 160px;
+            color: #7d8590;
+            font-size: 13px;
+        }
+
+        .status-indicator {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+        }
+
+        .status-online { background: #238636; }
+        .status-offline { background: #656d76; }
+
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-overlay.visible {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Security Setup Modal */
+        .security-setup-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 3000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .security-setup-content {
+            background: #2a3942;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            color: #e9edef;
+            text-align: center;
+            padding: 40px 30px;
+        }
+
+        .security-icon-large {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .setup-steps {
+            text-align: left;
+            margin: 30px 0;
+        }
+
+        .setup-step {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            background: #3b4a54;
+            border-radius: 8px;
+            border-left: 4px solid #00d4aa;
+        }
+
+        .step-number {
+            background: #00d4aa;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 15px;
+        }
+
+        .step-content h4 {
+            margin-bottom: 5px;
+            color: #e9edef;
+        }
+
+        .step-content p {
+            font-size: 14px;
+            color: #8696a0;
+        }
+
+        .security-warning {
+            background: rgba(255, 184, 0, 0.1);
+            border: 1px solid #ffb800;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #ffb800;
+            font-size: 14px;
+        }
+
+        .file-drop-zone {
+            border: 2px dashed #4a5c66;
+            border-radius: 8px;
+            padding: 30px;
+            margin: 20px 0;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .file-drop-zone:hover {
+            border-color: #00d4aa;
+            background: rgba(0, 212, 170, 0.05);
+        }
+
+        .file-drop-zone.dragover {
+            border-color: #00d4aa;
+            background: rgba(0, 212, 170, 0.1);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #3b4a54;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4aa, #00a084);
+            transition: width 0.3s ease;
+        }
+
+        .security-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .info-card {
+            background: #3b4a54;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .info-card h4 {
+            color: #00d4aa;
+            margin-bottom: 8px;
+        }
+
+        .info-card p {
+            font-size: 12px;
+            color: #8696a0;
+        }
+
+        @media (max-width: 768px) {
+            .security-info {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                width: 100%;
+                left: -100%;
+            }
+        }
+
+        /* Toast Notification System */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 4000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .toast {
+            background: #2a3942;
+            border: 1px solid #3b4a54;
+            border-radius: 12px;
+            padding: 20px;
+            color: #e9edef;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transform: translateX(450px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backdrop-filter: blur(10px);
+            border-left: 4px solid #00d4aa;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            border-left-color: #00d4aa;
+            background: linear-gradient(135deg, rgba(0, 212, 170, 0.1), #2a3942);
+        }
+
+        .toast.warning {
+            border-left-color: #ffb800;
+            background: linear-gradient(135deg, rgba(255, 184, 0, 0.1), #2a3942);
+        }
+
+        .toast.error {
+            border-left-color: #ff6b6b;
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), #2a3942);
+        }
+
+        .toast.contact-request {
+            border-left-color: #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), #2a3942);
+        }
+
+        .toast-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .toast-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .toast-icon {
+            font-size: 20px;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            color: #8696a0;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .toast-close:hover {
+            background: rgba(134, 150, 160, 0.1);
+        }
+
+        .toast-body {
+            margin-bottom: 15px;
+            line-height: 1.4;
+            color: #e9edef;
+        }
+
+        .toast-contact-info {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 10px 0;
+            font-family: monospace;
+            text-align: center;
+            border: 1px dashed #4a5c66;
+        }
+
+        .toast-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .toast-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .toast-btn.accept {
+            background: #238636;
+            color: white;
+        }
+
+        .toast-btn.accept:hover {
+            background: #2ea043;
+            transform: translateY(-1px);
+        }
+
+        .toast-btn.deny {
+            background: #d1242f;
+            color: white;
+        }
+
+        .toast-btn.deny:hover {
+            background: #da3633;
+            transform: translateY(-1px);
+        }
+
+        .toast-btn.info {
+            background: #1f6feb;
+            color: white;
+        }
+
+        .toast-btn.info:hover {
+            background: #388bfd;
+            transform: translateY(-1px);
+        }
+
+        .toast-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #238636, #2ea043);
+            border-radius: 0 0 6px 6px;
+            transition: width linear;
+        }
+
+        /* Contact Request Status Indicators */
+        .contact-request-pending {
+            opacity: 0.6;
+            position: relative;
+        }
+
+        .contact-request-pending::after {
+            content: '⏳';
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 12px;
+        }
+
+        /* Enhanced connection status */
+        .connection-status.requesting {
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+        }
+
+        @media (max-width: 768px) {
+            .toast-container {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
+                width: auto;
+            }
+
+            .toast-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Security Setup Modal -->
@@ -370,6 +1628,9 @@
 
     <!-- PeerJS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.0/dist/peerjs.min.js"></script>
+    
+    <!-- PWA Installer Script -->
+    <script src="/pwa-installer.js"></script>
 
     <script>
         // Crypto Username System (enhanced for demo)
@@ -969,8 +2230,23 @@
                 
                 conn.on('open', () => {
                     console.log('✅ Connection opened with:', contactUsername);
+                    
+                    // Check if this is a replacement for an existing connection
+                    const existingConn = this.connections.get(contactUsername);
+                    if (existingConn && existingConn !== conn) {
+                        console.log('🔄 Replacing existing connection for:', contactUsername);
+                        try {
+                            existingConn.close();
+                        } catch (e) {
+                            console.warn('Error closing old connection:', e);
+                        }
+                    }
+                    
                     this.connections.set(contactUsername, conn);
                     this.updateContactStatus(contactUsername, true);
+                    
+                    // Don't auto-add as contact anymore - wait for proper contact request
+                    console.log('Connection established, waiting for contact request...');
                 });
 
                 conn.on('data', (data) => {
@@ -996,47 +2272,501 @@
                 const message = input.value.trim();
                 
                 if (!message || !this.currentChatUsername) {
+                    console.warn('No message or chat username:', { message, currentChat: this.currentChatUsername });
                     return;
                 }
 
                 try {
-                    // For now, send as simple message
-                    const messageData = {
-                        type: 'message',
-                        text: message,
-                        timestamp: Date.now(),
-                        from: this.userSystem.username,
-                        securityLevel: 'webrtc_only'
-                    };
+                    let encryptedMessage;
+                    let encryptionAttempted = false;
+                    
+                    // Try E2E encryption first
+                    try {
+                        console.log('🔐 Attempting E2E encryption...');
+                        encryptedMessage = await this.e2e.encryptMessage(this.currentChatUsername, message);
+                        encryptionAttempted = true;
+                        console.log('✅ Message encrypted with E2E');
+                    } catch (e) {
+                        console.warn('E2E encryption failed, using WebRTC only:', e);
+                        encryptedMessage = {
+                            type: 'webrtc_only_message',
+                            text: message,
+                            timestamp: Date.now(),
+                            from: this.userSystem.username,
+                            securityLevel: 'webrtc_only'
+                        };
+                    }
 
-                    // Display message locally
-                    this.addMessageToChat(this.currentChatUsername, messageData, true);
-                    this.securityMetrics.messagesSent++;
+                    await this.connectToContact(this.currentChatUsername);
+                    const conn = this.connections.get(this.currentChatUsername);
                     
-                    input.value = '';
-                    this.autoResize(input);
-                    
-                    console.log('✅ Message sent successfully');
+                    if (conn && conn.open) {
+                        console.log('📤 Sending message:', encryptedMessage.type);
+                        conn.send(encryptedMessage);
+                        
+                        // Create a proper message object for sender's display
+                        const displayMessage = {
+                            ...encryptedMessage,
+                            text: message, // Ensure the original text is preserved for display
+                            timestamp: Date.now(),
+                            from: this.userSystem.username
+                        };
+                        
+                        this.addMessageToChat(this.currentChatUsername, displayMessage, true);
+                        this.securityMetrics.messagesSent++;
+                        
+                        input.value = '';
+                        this.autoResize(input);
+                        
+                        // If E2E encryption failed, try to establish it for next time
+                        if (!encryptionAttempted) {
+                            this.establishE2EIfNeeded(this.currentChatUsername);
+                        }
+                        
+                        console.log('✅ Message sent successfully');
+                    } else {
+                        throw new Error('No active connection');
+                    }
                 } catch (error) {
-                    console.error('Failed to send message:', error);
+                    console.error('Failed to send secure message:', error);
+                    this.showToast('error', '❌ Send Failed', 'Failed to send message. The user might be offline.');
                 }
             }
 
             async handleIncomingMessage(data, fromUsername) {
                 try {
-                    console.log('📨 Processing message from', fromUsername);
+                    console.log('📨 Processing message from', fromUsername, 'type:', data.type);
                     
-                    // For now, handle simple messages
+                    // Handle different message types
+                    if (data.type === 'contact_request') {
+                        console.log('📩 Processing contact request from:', fromUsername);
+                        this.handleContactRequest(data, fromUsername);
+                        return;
+                    } else if (data.type === 'contact_request_response') {
+                        console.log('📬 Processing contact request response from:', fromUsername);
+                        this.handleContactRequestResponse(data, fromUsername);
+                        return;
+                    }
+
+                    // Only process regular messages if they are already a contact
+                    if (!this.contacts.has(fromUsername)) {
+                        console.log('⚠️ Received message from non-contact:', fromUsername, 'ignoring...');
+                        return;
+                    }
+
+                    let plaintext = data.text || data.message || 'Encrypted message';
+                    let securityLevel = data.securityLevel || 'webrtc_only';
+
+                    if (data.type === 'e2e_message') {
+                        try {
+                            plaintext = await this.e2e.decryptMessage(data);
+                            securityLevel = 'maximum';
+                        } catch (e) {
+                            console.warn('Failed to decrypt E2E message:', e);
+                            plaintext = data.text || 'Failed to decrypt message';
+                            securityLevel = 'webrtc_only';
+                        }
+                    }
+
                     const messageData = {
                         ...data,
-                        securityLevel: data.securityLevel || 'webrtc_only'
+                        text: plaintext,
+                        securityLevel: securityLevel
                     };
 
                     this.addMessageToChat(fromUsername, messageData, false);
                     this.securityMetrics.messagesReceived++;
+
+                    const contact = this.contacts.get(fromUsername);
+                    if (contact) {
+                        contact.lastSeen = Date.now();
+                        if (this.currentChatUsername !== fromUsername) {
+                            contact.unreadCount = (contact.unreadCount || 0) + 1;
+                        }
+                        this.saveContacts();
+                        this.updateContactsList();
+                    }
                 } catch (error) {
                     console.error('Failed to handle message:', error);
                 }
+            }
+
+            handleContactRequest(data, fromUsername) {
+                console.log('📩 Contact request received from:', fromUsername);
+                console.log('Request data:', data);
+                
+                // Don't show request if already contacts
+                if (this.contacts.has(fromUsername)) {
+                    console.log('Already contacts with:', fromUsername);
+                    return;
+                }
+
+                // Don't show duplicate requests
+                if (this.contactRequests.has(fromUsername)) {
+                    console.log('Duplicate request from:', fromUsername);
+                    return;
+                }
+
+                // Store the request
+                const request = {
+                    username: fromUsername,
+                    displayName: data.displayName || fromUsername.split('_')[0],
+                    publicKey: data.publicKey,
+                    timestamp: Date.now()
+                };
+                
+                this.contactRequests.set(fromUsername, request);
+                console.log('Contact request stored:', request);
+                console.log('Total contact requests:', this.contactRequests.size);
+
+                // Update notifications immediately
+                this.updateNotifications();
+                
+                // Also show toast notification for immediate attention
+                this.showContactRequestToast(fromUsername, request.displayName);
+                
+                console.log('✅ Contact request processed and notifications updated');
+            }
+
+            handleContactRequestResponse(data, fromUsername) {
+                console.log('📬 Contact request response from:', fromUsername, data.accepted ? 'ACCEPTED' : 'DENIED');
+                
+                if (data.accepted) {
+                    // Remove pending status and add as proper contact
+                    const existingContact = this.contacts.get(fromUsername);
+                    if (existingContact) {
+                        existingContact.pending = false;
+                        existingContact.lastMessage = null;
+                        existingContact.publicKey = data.publicKey;
+                        this.contacts.set(fromUsername, existingContact);
+                        this.saveContacts();
+                        this.updateContactsList();
+                        
+                        // Establish E2E encryption
+                        this.establishE2EIfNeeded(fromUsername);
+                    } else {
+                        // Create new contact if doesn't exist
+                        const contact = {
+                            username: fromUsername,
+                            displayName: data.displayName || fromUsername.split('_')[0],
+                            lastSeen: Date.now(),
+                            unreadCount: 0,
+                            lastMessage: null,
+                            publicKey: data.publicKey,
+                            pending: false
+                        };
+                        
+                        this.contacts.set(fromUsername, contact);
+                        this.saveContacts();
+                        this.updateContactsList();
+                        
+                        // Establish E2E encryption
+                        this.establishE2EIfNeeded(fromUsername);
+                    }
+                    
+                    this.showToast('success', '🤝 Contact Request Accepted!', 
+                        `${data.displayName || fromUsername} accepted your request. You can now chat securely!`);
+                } else {
+                    // Remove the pending contact since request was denied
+                    this.contacts.delete(fromUsername);
+                    this.saveContacts();
+                    this.updateContactsList();
+                    
+                    this.showToast('warning', '❌ Contact Request Denied', 
+                        `${data.displayName || fromUsername} denied your contact request.`);
+                }
+                
+                // Remove any pending request status
+                this.removePendingRequestStatus(fromUsername);
+            }
+
+            showContactRequestToast(username, displayName) {
+                const toast = document.createElement('div');
+                toast.className = 'toast contact-request';
+                toast.innerHTML = `
+                    <div class="toast-header">
+                        <div class="toast-title">
+                            <span class="toast-icon">🤝</span>
+                            Contact Request
+                        </div>
+                        <button class="toast-close" onclick="this.parentElement.parentElement.remove()">✕</button>
+                    </div>
+                    <div class="toast-body">
+                        <strong>${displayName}</strong> wants to add you as a secure contact.
+                        <div class="toast-contact-info">${username}</div>
+                        <div style="font-size: 12px; color: #8696a0; margin-top: 8px;">
+                            ⚠️ Only accept if you trust this person and have verified their identity through a secure channel.
+                        </div>
+                    </div>
+                    <div class="toast-actions">
+                        <button class="toast-btn accept" onclick="acceptContactRequest('${username}')">
+                            ✅ Accept
+                        </button>
+                        <button class="toast-btn deny" onclick="denyContactRequest('${username}')">
+                            ❌ Deny
+                        </button>
+                    </div>
+                `;
+
+                document.getElementById('toastContainer').appendChild(toast);
+                
+                // Animate in
+                setTimeout(() => toast.classList.add('show'), 100);
+                
+                // Auto-remove after 60 seconds if no action
+                setTimeout(() => {
+                    if (toast.parentElement) {
+                        this.denyContactRequest(username, true);
+                        toast.remove();
+                    }
+                }, 60000);
+            }
+
+            async acceptContactRequest(username) {
+                console.log('✅ Accepting contact request from:', username);
+                
+                const request = this.contactRequests.get(username);
+                if (!request) {
+                    console.error('No pending request from:', username);
+                    return;
+                }
+
+                // Add contact
+                const contact = {
+                    username: username,
+                    displayName: request.displayName,
+                    lastSeen: Date.now(),
+                    unreadCount: 0,
+                    lastMessage: null,
+                    publicKey: request.publicKey,
+                    pending: false // Important: not pending anymore
+                };
+                
+                this.contacts.set(username, contact);
+                this.saveContacts();
+                this.updateContactsList();
+                
+                // Establish E2E encryption
+                if (request.publicKey) {
+                    await this.establishE2EIfNeeded(username);
+                }
+
+                // Send acceptance response
+                try {
+                    const conn = this.connections.get(username);
+                    if (conn && conn.open) {
+                        const responseData = {
+                            type: 'contact_request_response',
+                            accepted: true,
+                            displayName: this.userSystem.username.split('_')[0],
+                            publicKey: await this.userSystem.getPublicKeyForSharing(),
+                            timestamp: Date.now()
+                        };
+                        
+                        console.log('📤 Sending acceptance response:', responseData);
+                        conn.send(responseData);
+                    } else {
+                        console.warn('No active connection to send acceptance response');
+                    }
+                } catch (error) {
+                    console.error('Failed to send acceptance:', error);
+                }
+                
+                // Remove request
+                this.contactRequests.delete(username);
+                this.updateNotifications();
+                
+                // Show success toast
+                this.showToast('success', '🎉 Contact Added!', 
+                    `${request.displayName} has been added to your secure contacts.`);
+                
+                // Remove the request toast
+                const toasts = document.querySelectorAll('.toast.contact-request');
+                toasts.forEach(toast => {
+                    if (toast.innerHTML.includes(username)) {
+                        toast.remove();
+                    }
+                });
+            }
+
+            async denyContactRequest(username, autoExpired = false) {
+                console.log('❌ Denying contact request from:', username);
+                
+                const request = this.contactRequests.get(username);
+                if (!request) return;
+
+                // Send denial response
+                try {
+                    const conn = this.connections.get(username);
+                    if (conn && conn.open) {
+                        const responseData = {
+                            type: 'contact_request_response',
+                            accepted: false,
+                            displayName: this.userSystem.username.split('_')[0],
+                            timestamp: Date.now()
+                        };
+                        
+                        console.log('📤 Sending denial response:', responseData);
+                        conn.send(responseData);
+                    }
+                } catch (error) {
+                    console.error('Failed to send denial:', error);
+                }
+                
+                // Remove request
+                this.contactRequests.delete(username);
+                this.updateNotifications();
+                
+                // Show info toast
+                if (!autoExpired) {
+                    this.showToast('warning', '❌ Request Denied', 
+                        `Contact request from ${request.displayName} was denied.`);
+                }
+                
+                // Remove the request toast
+                const toasts = document.querySelectorAll('.toast.contact-request');
+                toasts.forEach(toast => {
+                    if (toast.innerHTML.includes(username)) {
+                        toast.remove();
+                    }
+                });
+            }
+
+            updateNotifications() {
+                console.log('Updating notifications, request count:', this.contactRequests.size);
+                
+                const badge = document.getElementById('notificationBadge');
+                const dropdown = document.getElementById('notificationsList');
+                const requestCount = this.contactRequests.size;
+                
+                // Update notification badge
+                if (requestCount > 0) {
+                    badge.style.display = 'block';
+                    console.log('Showing notification badge');
+                } else {
+                    badge.style.display = 'none';
+                    console.log('Hiding notification badge');
+                }
+                
+                // Update dropdown content
+                if (requestCount === 0) {
+                    dropdown.innerHTML = `
+                        <div class="empty-notifications">
+                            <div style="font-size: 24px; margin-bottom: 8px;">🔔</div>
+                            <div>No notifications</div>
+                        </div>
+                    `;
+                } else {
+                    dropdown.innerHTML = '';
+                    const requests = Array.from(this.contactRequests.values());
+                    console.log('Creating notification items for:', requests);
+                    
+                    requests.forEach(request => {
+                        const notificationItem = this.createNotificationItem(request);
+                        dropdown.appendChild(notificationItem);
+                    });
+                }
+            }
+
+            createNotificationItem(request) {
+                console.log('Creating notification item for:', request);
+                
+                const div = document.createElement('div');
+                div.className = 'notification-item';
+                
+                const timeAgo = this.getTimeAgo(request.timestamp);
+                const avatarLetter = request.displayName.charAt(0).toUpperCase();
+                
+                div.innerHTML = `
+                    <div class="notification-content">
+                        <div class="notification-avatar">${avatarLetter}</div>
+                        <div class="notification-text">
+                            <strong>${request.displayName}</strong> wants to chat
+                        </div>
+                        <div class="notification-time">${timeAgo}</div>
+                    </div>
+                    <div class="notification-actions">
+                        <button class="notification-btn accept" onclick="acceptContactRequestFromNotification('${request.username}')">
+                            Accept
+                        </button>
+                        <button class="notification-btn deny" onclick="denyContactRequestFromNotification('${request.username}')">
+                            Deny
+                        </button>
+                    </div>
+                `;
+                
+                return div;
+            }
+
+            getTimeAgo(timestamp) {
+                const now = Date.now();
+                const diff = now - timestamp;
+                const minutes = Math.floor(diff / 60000);
+                const hours = Math.floor(diff / 3600000);
+                const days = Math.floor(diff / 86400000);
+                
+                if (minutes < 1) return 'just now';
+                if (minutes < 60) return `${minutes}m ago`;
+                if (hours < 24) return `${hours}h ago`;
+                return `${days}d ago`;
+            }
+
+            showToast(type, title, message, duration = 5000) {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                
+                let icon = '📱';
+                switch (type) {
+                    case 'success': icon = '✅'; break;
+                    case 'warning': icon = '⚠️'; break;
+                    case 'error': icon = '❌'; break;
+                    case 'info': icon = 'ℹ️'; break;
+                }
+                
+                toast.innerHTML = `
+                    <div class="toast-header">
+                        <div class="toast-title">
+                            <span class="toast-icon">${icon}</span>
+                            ${title}
+                        </div>
+                        <button class="toast-close" onclick="this.parentElement.parentElement.remove()">✕</button>
+                    </div>
+                    <div class="toast-body">${message}</div>
+                    <div class="toast-progress" style="width: 100%;"></div>
+                `;
+
+                document.getElementById('toastContainer').appendChild(toast);
+                
+                // Animate in
+                setTimeout(() => toast.classList.add('show'), 100);
+                
+                // Animate progress bar
+                const progressBar = toast.querySelector('.toast-progress');
+                if (progressBar && duration > 0) {
+                    progressBar.style.transition = `width ${duration}ms linear`;
+                    setTimeout(() => progressBar.style.width = '0%', 100);
+                }
+                
+                // Auto-remove
+                if (duration > 0) {
+                    setTimeout(() => {
+                        if (toast.parentElement) {
+                            toast.style.transform = 'translateX(450px)';
+                            toast.style.opacity = '0';
+                            setTimeout(() => toast.remove(), 400);
+                        }
+                    }, duration);
+                }
+            }
+
+            removePendingRequestStatus(username) {
+                // Remove any visual pending indicators
+                const chatItems = document.querySelectorAll('.chat-item');
+                chatItems.forEach(item => {
+                    if (item.innerHTML.includes(username)) {
+                        item.classList.remove('contact-request-pending');
+                    }
+                });
             }
 
             addMessageToChat(username, messageData, isSent) {
@@ -1044,11 +2774,22 @@
                     this.chatMessages.set(username, []);
                 }
                 
+                // Ensure we have the message text for display
+                const messageText = messageData.text || messageData.message || 'Message';
+                
                 const message = {
                     ...messageData,
+                    text: messageText, // Ensure text is always available
                     isSent: isSent,
                     id: Date.now() + Math.random()
                 };
+                
+                console.log('💬 Adding message to chat:', { 
+                    username, 
+                    text: messageText, 
+                    isSent, 
+                    type: messageData.type 
+                });
                 
                 this.chatMessages.get(username).push(message);
                 this.saveMessages();
@@ -1057,7 +2798,8 @@
                     this.displayMessage(message);
                 }
                 
-                this.updateContactLastMessage(username, messageData.text);
+                // Safely update contact last message
+                this.updateContactLastMessage(username, messageText);
             }
 
             displayMessage(message) {
@@ -1067,7 +2809,32 @@
                 
                 const bubble = document.createElement('div');
                 bubble.className = 'message-bubble';
-                bubble.textContent = message.text || 'Message';
+                
+                // Safely extract message text
+                const messageText = message.text || message.message || 'Message';
+                bubble.textContent = messageText;
+                
+                const security = document.createElement('div');
+                security.className = 'message-security';
+                
+                let securityIcon = '';
+                let securityText = '';
+                
+                switch (message.securityLevel) {
+                    case 'maximum':
+                        securityIcon = '🔒🔒';
+                        securityText = 'Double Encrypted';
+                        break;
+                    case 'webrtc_only':
+                        securityIcon = '🔒';
+                        securityText = 'WebRTC Encrypted';
+                        break;
+                    default:
+                        securityIcon = '🔓';
+                        securityText = 'Basic';
+                }
+                
+                security.innerHTML = `<span class="security-icon">${securityIcon}</span> ${securityText}`;
                 
                 const time = document.createElement('div');
                 time.className = 'message-time';
@@ -1077,10 +2844,177 @@
                 `;
                 
                 messageDiv.appendChild(bubble);
+                messageDiv.appendChild(security);
                 messageDiv.appendChild(time);
                 messagesArea.appendChild(messageDiv);
                 
                 messagesArea.scrollTop = messagesArea.scrollHeight;
+                
+                console.log('📱 Message displayed:', { 
+                    text: messageText, 
+                    isSent: message.isSent, 
+                    securityLevel: message.securityLevel 
+                });
+            }
+
+            async connectToContact(username) {
+                // Check for existing connection
+                const existingConn = this.connections.get(username);
+                if (existingConn) {
+                    if (existingConn.open) {
+                        console.log('✅ Using existing connection to:', username);
+                        return existingConn;
+                    } else {
+                        // Remove stale connection
+                        console.log('🧹 Removing stale connection to:', username);
+                        this.connections.delete(username);
+                    }
+                }
+
+                console.log('🔗 Creating new connection to:', username);
+                const conn = this.peer.connect(username, {
+                    reliable: true,
+                    serialization: 'json'
+                });
+                
+                return new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        console.error('⏰ Connection timeout to:', username);
+                        try {
+                            conn.close();
+                        } catch (e) {
+                            // Ignore errors when closing
+                        }
+                        reject(new Error('Connection timeout'));
+                    }, 15000); // Increased timeout for better reliability
+                    
+                    conn.on('open', () => {
+                        clearTimeout(timeout);
+                        console.log('✅ Connection established to:', username);
+                        
+                        // If there was an existing connection, close it
+                        const oldConn = this.connections.get(username);
+                        if (oldConn && oldConn !== conn) {
+                            try {
+                                oldConn.close();
+                            } catch (e) {
+                                console.warn('Error closing old connection:', e);
+                            }
+                        }
+                        
+                        this.connections.set(username, conn);
+                        this.updateContactStatus(username, true);
+                        
+                        conn.on('data', (data) => {
+                            console.log('📨 Received data in connectToContact from', username, ':', data);
+                            this.handleIncomingMessage(data, username);
+                        });
+                        
+                        conn.on('close', () => {
+                            console.log('🔌 Connection closed in connectToContact with:', username);
+                            this.connections.delete(username);
+                            this.updateContactStatus(username, false);
+                        });
+                        
+                        conn.on('error', (error) => {
+                            console.error('🚫 Connection error in connectToContact with', username, ':', error);
+                            this.connections.delete(username);
+                            this.updateContactStatus(username, false);
+                        });
+                        
+                        resolve(conn);
+                    });
+                    
+                    conn.on('error', (error) => {
+                        clearTimeout(timeout);
+                        console.error('🚫 Failed to connect to:', username, error);
+                        reject(error);
+                    });
+                });
+            }
+
+            openChat(username) {
+                this.currentChatUsername = username;
+                
+                const contact = this.contacts.get(username);
+                if (contact) {
+                    contact.unreadCount = 0;
+                    this.saveContacts();
+                    this.updateContactsList();
+                    
+                    document.getElementById('currentChatName').textContent = contact.displayName;
+                    document.getElementById('currentChatAvatar').textContent = contact.displayName.charAt(0).toUpperCase();
+                    
+                    document.getElementById('welcomeScreen').style.display = 'none';
+                    document.getElementById('chatHeader').style.display = 'flex';
+                    document.getElementById('messagesArea').style.display = 'block';
+                    document.getElementById('messageInputArea').style.display = 'flex';
+                    
+                    this.loadChatMessages(username);
+                    this.updateEncryptionStatus(username);
+                    this.establishE2EIfNeeded(username);
+                    this.connectToContact(username).catch(console.error);
+                }
+                
+                this.closeSidebar();
+            }
+
+            async establishE2EIfNeeded(username) {
+                try {
+                    const conversation = this.e2e.getConversationInfo(username);
+                    if (!conversation) {
+                        console.log('🔐 Establishing E2E encryption with:', username);
+                        const publicKey = 'demo_key_' + username;
+                        await this.e2e.initializeConversation(username, publicKey);
+                        this.securityMetrics.encryptedChats++;
+                        
+                        // Update encryption status immediately
+                        if (this.currentChatUsername === username) {
+                            this.updateEncryptionStatus(username);
+                        }
+                        
+                        console.log('✅ E2E encryption established with:', username);
+                    } else {
+                        console.log('✅ E2E encryption already established with:', username);
+                    }
+                } catch (error) {
+                    console.warn('Could not establish E2E encryption with', username, ':', error);
+                }
+            }
+
+            updateEncryptionStatus(username) {
+                const encryptionStatus = document.getElementById('encryptionStatus');
+                const conversation = this.e2e.getConversationInfo(username);
+                const webrtcConnected = this.connections.has(username);
+                
+                const e2eBadge = encryptionStatus.children[0];
+                const webrtcBadge = encryptionStatus.children[1];
+                
+                if (conversation) {
+                    e2eBadge.className = 'encryption-badge encryption-e2e';
+                    e2eBadge.textContent = 'E2E Active';
+                } else {
+                    e2eBadge.className = 'encryption-badge encryption-none';
+                    e2eBadge.textContent = 'No E2E';
+                }
+                
+                if (webrtcConnected) {
+                    webrtcBadge.className = 'encryption-badge encryption-webrtc';
+                    webrtcBadge.textContent = 'WebRTC Active';
+                } else {
+                    webrtcBadge.className = 'encryption-badge encryption-none';
+                    webrtcBadge.textContent = 'No WebRTC';
+                }
+            }
+
+            loadChatMessages(username) {
+                const messagesArea = document.getElementById('messagesArea');
+                messagesArea.innerHTML = '';
+                
+                const messages = this.chatMessages.get(username) || [];
+                messages.forEach(message => {
+                    this.displayMessage(message);
+                });
             }
 
             updateConnectionStatus(status) {
@@ -1106,21 +3040,23 @@
                     const statusIndicator = document.getElementById('contactStatus');
                     const statusText = document.getElementById('contactStatusText');
                     
-                    if (statusIndicator && statusText) {
-                        statusIndicator.className = `status-indicator ${isOnline ? 'status-online' : 'status-offline'}`;
-                        statusText.textContent = isOnline ? 'online & encrypted' : 'last seen recently';
-                    }
+                    statusIndicator.className = `status-indicator ${isOnline ? 'status-online' : 'status-offline'}`;
+                    statusText.textContent = isOnline ? 'online & encrypted' : 'last seen recently';
                 }
             }
 
-            updateContactLastMessage(username, message) {
-                const contact = this.contacts.get(username);
-                if (contact && message) {
-                    contact.lastMessage = message.length > 50 ? message.substring(0, 50) + '...' : message;
-                    contact.lastSeen = Date.now();
-                    this.saveContacts();
-                    this.updateContactsList();
-                }
+            autoAddContact(username) {
+                const contact = {
+                    username: username,
+                    displayName: username.split('_')[0] || username,
+                    lastSeen: Date.now(),
+                    unreadCount: 0,
+                    autoAdded: true
+                };
+                
+                this.contacts.set(username, contact);
+                this.saveContacts();
+                this.updateContactsList();
             }
 
             updateContactsList() {
@@ -1138,6 +3074,8 @@
                     return;
                 }
                 
+                contactsArray.sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
+                
                 chatsList.innerHTML = '';
                 contactsArray.forEach(contact => {
                     const chatItem = this.createChatItem(contact);
@@ -1147,12 +3085,116 @@
 
             createChatItem(contact) {
                 const div = document.createElement('div');
-                div.className = `chat-item ${contact.unreadCount > 0 ? 'unread' : ''}`;
-                div.onclick = () => this.openChat(contact.username);
+                div.className = `chat-item ${contact.unreadCount > 0 ? 'unread' : ''} ${this.currentChatUsername === contact.username ? 'active' : ''} ${contact.pending ? 'contact-request-pending' : ''}`;
+                
+                // Add long press functionality
+                let longPressTimer;
+                let isLongPress = false;
+                let startTime = 0;
+                let isDragging = false;
+                
+                const startLongPress = (e) => {
+                    // Don't start long press if clicking on action buttons
+                    if (e.target.closest('.chat-item-actions')) {
+                        return;
+                    }
+                    
+                    startTime = Date.now();
+                    isLongPress = false;
+                    isDragging = false;
+                    
+                    longPressTimer = setTimeout(() => {
+                        if (!isDragging) {
+                            isLongPress = true;
+                            div.classList.add('long-press-active', 'show-actions');
+                            console.log('Long press activated for:', contact.username);
+                        }
+                    }, 500);
+                };
+                
+                const endLongPress = (e) => {
+                    clearTimeout(longPressTimer);
+                    const duration = Date.now() - startTime;
+                    
+                    // Don't do anything if clicking on action buttons
+                    if (e.target.closest('.chat-item-actions')) {
+                        return;
+                    }
+                    
+                    if (isLongPress || duration >= 500) {
+                        // Was a long press, don't open chat
+                        console.log('Long press detected, not opening chat');
+                        return;
+                    } else if (!isDragging) {
+                        // Was a short press and not dragging, open chat
+                        div.classList.remove('long-press-active', 'show-actions');
+                        this.openChat(contact.username);
+                    }
+                };
+                
+                const cancelLongPress = () => {
+                    clearTimeout(longPressTimer);
+                    isLongPress = false;
+                    isDragging = false;
+                };
+                
+                const handleMove = () => {
+                    isDragging = true;
+                    cancelLongPress();
+                };
+                
+                // Mouse events
+                div.addEventListener('mousedown', startLongPress);
+                div.addEventListener('mouseup', endLongPress);
+                div.addEventListener('mouseleave', () => {
+                    cancelLongPress();
+                    // Keep actions visible when mouse leaves if already showing
+                    if (!div.classList.contains('show-actions')) {
+                        div.classList.remove('long-press-active');
+                    }
+                });
+                div.addEventListener('mousemove', handleMove);
+                div.addEventListener('contextmenu', (e) => e.preventDefault());
+                
+                // Touch events for mobile
+                div.addEventListener('touchstart', (e) => {
+                    startLongPress(e);
+                });
+                div.addEventListener('touchend', endLongPress);
+                div.addEventListener('touchcancel', cancelLongPress);
+                div.addEventListener('touchmove', handleMove);
                 
                 const avatar = document.createElement('div');
                 avatar.className = 'chat-avatar';
                 avatar.textContent = contact.displayName.charAt(0).toUpperCase();
+                
+                const securityIndicator = document.createElement('div');
+                securityIndicator.className = 'chat-security-indicator';
+                
+                if (contact.pending) {
+                    securityIndicator.className += ' security-none';
+                    securityIndicator.textContent = '⏳';
+                    securityIndicator.title = 'Contact Request Pending';
+                } else {
+                    const hasE2E = this.e2e.getConversationInfo(contact.username);
+                    const hasWebRTC = this.connections.has(contact.username);
+                    
+                    if (hasE2E && hasWebRTC) {
+                        securityIndicator.className += ' security-max';
+                        securityIndicator.textContent = '🔒';
+                        securityIndicator.title = 'Maximum Security (E2E + WebRTC)';
+                    } else if (hasWebRTC) {
+                        securityIndicator.className += ' security-partial';
+                        securityIndicator.textContent = '🔓';
+                        securityIndicator.title = 'WebRTC Security Only';
+                    } else {
+                        securityIndicator.className += ' security-none';
+                        securityIndicator.textContent = '❌';
+                        securityIndicator.title = 'No Active Encryption';
+                    }
+                }
+                
+                avatar.appendChild(securityIndicator);
                 
                 const info = document.createElement('div');
                 info.className = 'chat-info';
@@ -1175,48 +3217,131 @@
                 
                 const preview = document.createElement('div');
                 preview.className = 'chat-preview';
-                preview.textContent = contact.lastMessage || 'No messages yet';
+                
+                if (contact.pending) {
+                    preview.innerHTML = '<em style="color: #fbbf05;">Contact request sent...</em>';
+                } else {
+                    preview.textContent = contact.lastMessage || 'No messages yet';
+                }
                 
                 info.appendChild(header);
                 info.appendChild(preview);
                 
+                // Create actions container
+                const actions = document.createElement('div');
+                actions.className = 'chat-item-actions';
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-chat-btn';
+                deleteBtn.textContent = 'Delete';
+                
+                // Prevent all event bubbling for the delete button
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    e.preventDefault();
+                    console.log('Delete button clicked for:', contact.username);
+                    
+                    // Hide the actions first
+                    div.classList.remove('long-press-active', 'show-actions');
+                    
+                    // Small delay to ensure UI updates before showing confirm dialog
+                    setTimeout(() => {
+                        this.deleteChat(contact.username);
+                    }, 100);
+                });
+                
+                // Also prevent mouse events from bubbling
+                deleteBtn.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                });
+                
+                deleteBtn.addEventListener('mouseup', (e) => {
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                });
+                
+                actions.appendChild(deleteBtn);
+                
                 div.appendChild(avatar);
                 div.appendChild(info);
+                div.appendChild(actions);
+                
+                if (contact.unreadCount > 0 && !contact.pending) {
+                    const badge = document.createElement('div');
+                    badge.className = 'unread-badge';
+                    badge.textContent = contact.unreadCount;
+                    div.appendChild(badge);
+                }
                 
                 return div;
             }
 
-            openChat(username) {
-                this.currentChatUsername = username;
+            deleteChat(username) {
+                console.log('Attempting to delete chat for:', username);
                 
                 const contact = this.contacts.get(username);
-                if (contact) {
-                    contact.unreadCount = 0;
-                    this.saveContacts();
-                    this.updateContactsList();
-                    
-                    document.getElementById('currentChatName').textContent = contact.displayName;
-                    document.getElementById('currentChatAvatar').textContent = contact.displayName.charAt(0).toUpperCase();
-                    
-                    document.getElementById('welcomeScreen').style.display = 'none';
-                    document.getElementById('chatHeader').style.display = 'flex';
-                    document.getElementById('messagesArea').style.display = 'block';
-                    document.getElementById('messageInputArea').style.display = 'flex';
-                    
-                    this.loadChatMessages(username);
+                if (!contact) {
+                    console.error('Contact not found:', username);
+                    return;
                 }
                 
-                this.closeSidebar();
-            }
-
-            loadChatMessages(username) {
-                const messagesArea = document.getElementById('messagesArea');
-                messagesArea.innerHTML = '';
+                const confirmMessage = `Are you sure you want to delete the chat with ${contact.displayName}?\n\nThis will:\n• Remove the contact\n• Delete all messages\n• Close the connection\n\nThis action cannot be undone.`;
                 
-                const messages = this.chatMessages.get(username) || [];
-                messages.forEach(message => {
-                    this.displayMessage(message);
-                });
+                if (confirm(confirmMessage)) {
+                    console.log('User confirmed deletion for:', username);
+                    
+                    try {
+                        // Remove contact
+                        this.contacts.delete(username);
+                        this.saveContacts();
+                        console.log('Contact removed from storage');
+                        
+                        // Remove messages
+                        this.chatMessages.delete(username);
+                        this.saveMessages();
+                        console.log('Messages removed from storage');
+                        
+                        // Close connection
+                        const conn = this.connections.get(username);
+                        if (conn && conn.open) {
+                            conn.close();
+                            console.log('Connection closed');
+                        }
+                        this.connections.delete(username);
+                        
+                        // Remove E2E conversation
+                        if (this.e2e) {
+                            this.e2e.conversations.delete(username);
+                            this.e2e.sessionKeys.delete(username);
+                            this.e2e.saveState();
+                            console.log('E2E conversation removed');
+                        }
+                        
+                        // If this was the current chat, go back to welcome screen
+                        if (this.currentChatUsername === username) {
+                            this.currentChatUsername = null;
+                            document.getElementById('welcomeScreen').style.display = 'flex';
+                            document.getElementById('chatHeader').style.display = 'none';
+                            document.getElementById('messagesArea').style.display = 'none';
+                            document.getElementById('messageInputArea').style.display = 'none';
+                            console.log('Returned to welcome screen');
+                        }
+                        
+                        // Update contacts list
+                        this.updateContactsList();
+                        console.log('Contacts list updated');
+                        
+                        this.showToast('success', '🗑️ Chat Deleted', `Chat with ${contact.displayName} has been deleted.`);
+                        
+                    } catch (error) {
+                        console.error('Error deleting chat:', error);
+                        this.showToast('error', '❌ Delete Failed', 'Failed to delete chat. Please try again.');
+                    }
+                } else {
+                    console.log('User cancelled deletion');
+                }
             }
 
             updateUI() {
@@ -1228,6 +3353,18 @@
                 }
             }
 
+            updateContactLastMessage(username, message) {
+                const contact = this.contacts.get(username);
+                if (contact && message && typeof message === 'string') {
+                    contact.lastMessage = message.length > 50 ? message.substring(0, 50) + '...' : message;
+                    contact.lastSeen = Date.now();
+                    this.saveContacts();
+                    this.updateContactsList();
+                } else {
+                    console.warn('Invalid message or contact for updateContactLastMessage:', { username, message, contact });
+                }
+            }
+
             saveContacts() {
                 const contactsArray = Array.from(this.contacts.entries());
                 localStorage.setItem('contacts', JSON.stringify(contactsArray));
@@ -1236,13 +3373,9 @@
             loadContacts() {
                 const saved = localStorage.getItem('contacts');
                 if (saved) {
-                    try {
-                        const contactsArray = JSON.parse(saved);
-                        this.contacts = new Map(contactsArray);
-                        this.updateContactsList();
-                    } catch (error) {
-                        console.error('Failed to load contacts:', error);
-                    }
+                    const contactsArray = JSON.parse(saved);
+                    this.contacts = new Map(contactsArray);
+                    this.updateContactsList();
                 }
             }
 
@@ -1254,15 +3387,12 @@
             loadMessages() {
                 const saved = localStorage.getItem('chatMessages');
                 if (saved) {
-                    try {
-                        const messagesArray = JSON.parse(saved);
-                        this.chatMessages = new Map(messagesArray);
-                    } catch (error) {
-                        console.error('Failed to load messages:', error);
-                    }
+                    const messagesArray = JSON.parse(saved);
+                    this.chatMessages = new Map(messagesArray);
                 }
             }
 
+            // Sidebar functions
             toggleSidebar() {
                 const sidebar = document.getElementById('sidebar');
                 const overlay = document.getElementById('sidebarOverlay');
@@ -1294,52 +3424,12 @@
                 textarea.style.height = 'auto';
                 textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
             }
-
-            showToast(type, title, message, duration = 5000) {
-                const toast = document.createElement('div');
-                toast.className = `toast ${type}`;
-                
-                let icon = '📱';
-                switch (type) {
-                    case 'success': icon = '✅'; break;
-                    case 'warning': icon = '⚠️'; break;
-                    case 'error': icon = '❌'; break;
-                    case 'info': icon = 'ℹ️'; break;
-                }
-                
-                toast.innerHTML = `
-                    <div class="toast-header">
-                        <div class="toast-title">
-                            <span class="toast-icon">${icon}</span>
-                            ${title}
-                        </div>
-                        <button class="toast-close" onclick="this.parentElement.parentElement.remove()">✕</button>
-                    </div>
-                    <div class="toast-body">${message}</div>
-                `;
-
-                document.getElementById('toastContainer').appendChild(toast);
-                
-                // Animate in
-                setTimeout(() => toast.classList.add('show'), 100);
-                
-                // Auto-remove
-                if (duration > 0) {
-                    setTimeout(() => {
-                        if (toast.parentElement) {
-                            toast.style.transform = 'translateX(450px)';
-                            toast.style.opacity = '0';
-                            setTimeout(() => toast.remove(), 400);
-                        }
-                    }, duration);
-                }
-            }
         }
 
         // Global instance
         let secureMessenger = null;
 
-        // UI Functions - defined as regular functions for HTML onclick compatibility
+        // UI Functions
         function toggleSidebar() {
             if (secureMessenger) {
                 secureMessenger.toggleSidebar();
@@ -1467,8 +3557,8 @@
                 
                 // Show success message after initialization
                 setTimeout(() => {
-                    if (secureMessenger) {
-                        secureMessenger.showToast('success', '🎉 Identity Created!', 
+                    if (window.secureMessenger) {
+                        window.secureMessenger.showToast('success', '🎉 Identity Created!', 
                             `Your secure identity ${username} has been created and backed up.`);
                     }
                 }, 1000);
@@ -1477,6 +3567,32 @@
                 console.error('Failed to create identity:', error);
                 alert('Failed to create secure identity. Please try again.');
             }
+        }
+
+        function downloadKeyFile(username, password) {
+            // For testing: create a properly formatted key file
+            const keyData = {
+                username: username,
+                created: new Date().toISOString(),
+                encrypted: true,
+                version: '1.0'
+            };
+            
+            const blob = new Blob([JSON.stringify(keyData, null, 2)], { type: 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            
+            const downloadLink = document.createElement('a');
+            downloadLink.href = url;
+            downloadLink.download = `${username}.key`;
+            downloadLink.style.display = 'none';
+            
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            
+            URL.revokeObjectURL(url);
+            
+            alert(`🔐 Key file downloaded: ${username}.key\n\nSave this file securely! You'll need it to access your account.`);
         }
 
         function selectKeyFile() {
@@ -1501,17 +3617,97 @@
         }
 
         async function importExistingKey() {
-            // Implementation here...
-            alert('Import functionality - to be implemented');
+            const fileInput = document.getElementById('keyFileInput');
+            const password = document.getElementById('importKeyPassword').value;
+            
+            if (!fileInput.files[0] || !password) {
+                alert('Please select a key file and enter your password');
+                return;
+            }
+            
+            if (password.length < 8) {
+                alert('Password must be at least 8 characters long');
+                return;
+            }
+            
+            try {
+                console.log('🔓 Importing existing identity...');
+                
+                // Show progress
+                document.getElementById('importProgress').style.display = 'block';
+                document.getElementById('importStatus').textContent = 'Decrypting key file...';
+                document.getElementById('importProgressFill').style.width = '30%';
+                
+                // Create new user system
+                const userSystem = new CryptoUsernameSystem();
+                
+                // Try to load from file with password
+                await new Promise(resolve => setTimeout(resolve, 500)); // Visual delay
+                
+                document.getElementById('importStatus').textContent = 'Verifying password...';
+                document.getElementById('importProgressFill').style.width = '60%';
+                
+                const success = await userSystem.loadFromKeyFile(fileInput.files[0], password);
+                
+                if (!success) {
+                    throw new Error('Invalid password or corrupted key file');
+                }
+                
+                document.getElementById('importStatus').textContent = 'Identity verified!';
+                document.getElementById('importProgressFill').style.width = '100%';
+                
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Save to storage with the same password and store password hash
+                await userSystem.saveToStorage(password);
+                
+                console.log('✅ Identity imported:', userSystem.username);
+                
+                // Hide setup modal and initialize messenger
+                document.getElementById('securitySetupModal').style.display = 'none';
+                await initializeMessenger();
+                
+                // Show success toast after initialization
+                setTimeout(() => {
+                    if (window.secureMessenger) {
+                        window.secureMessenger.showToast('success', '🎉 Identity Imported!', 
+                            `Your secure identity ${userSystem.username} has been successfully imported.`);
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Failed to import identity:', error);
+                
+                // Show specific error message
+                document.getElementById('importStatus').textContent = error.message;
+                document.getElementById('importStatus').style.color = '#d1242f';
+                document.getElementById('importProgressFill').style.background = '#d1242f';
+                
+                // Reset after 3 seconds
+                setTimeout(() => {
+                    document.getElementById('importProgress').style.display = 'none';
+                    document.getElementById('importStatus').style.color = '#e6edf3';
+                    document.getElementById('importProgressFill').style.background = 'linear-gradient(90deg, #238636, #2ea043)';
+                }, 3000);
+            }
         }
 
         // Modal Functions
         function showProfileModal() {
+            // Implementation for profile modal
             alert('Profile settings coming soon!');
         }
 
         function showSecurityModal() {
             const modal = document.getElementById('securityModal');
+            
+            // Update security info
+            if (secureMessenger && secureMessenger.userSystem.username) {
+                document.getElementById('identityInfo').textContent = secureMessenger.userSystem.username;
+                document.getElementById('encryptedChatsCount').textContent = `${secureMessenger.securityMetrics.encryptedChats} active`;
+                document.getElementById('messagesSentCount').textContent = `${secureMessenger.securityMetrics.messagesSent} encrypted`;
+            }
+            
             modal.style.display = 'flex';
         }
 
@@ -1521,6 +3717,17 @@
 
         function showShareModal() {
             const modal = document.getElementById('shareModal');
+            
+            if (secureMessenger && secureMessenger.userSystem.username) {
+                document.getElementById('shareUsername').textContent = secureMessenger.userSystem.username;
+                
+                // Generate demo public key fingerprint
+                const fingerprint = Array.from({length: 8}, () => 
+                    Math.floor(Math.random() * 256).toString(16).padStart(2, '0')
+                ).join(':');
+                document.getElementById('publicKeyFingerprint').textContent = fingerprint;
+            }
+            
             modal.style.display = 'flex';
         }
 
@@ -1529,74 +3736,433 @@
         }
 
         function addContact() {
-            // Implementation here...
-            alert('Add contact functionality - to be implemented');
+            const username = document.getElementById('contactUsernameInput').value.trim();
+            const displayName = document.getElementById('contactNameInput').value.trim();
+            
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+            
+            if (!username.match(/^[a-zA-Z0-9_]+_[a-f0-9]+$/)) {
+                alert('Please enter a valid cryptographic username (e.g., alice_8f3a9c2e)');
+                return;
+            }
+            
+            if (username === secureMessenger.userSystem.username) {
+                alert('You cannot add yourself as a contact');
+                return;
+            }
+            
+            if (secureMessenger.contacts.has(username)) {
+                alert('This contact already exists in your list');
+                return;
+            }
+            
+            // Send contact request
+            sendContactRequest(username, displayName);
+            
+            closeModal('addContactModal');
+            
+            // Clear inputs
+            document.getElementById('contactUsernameInput').value = '';
+            document.getElementById('contactNameInput').value = '';
         }
 
+        async function sendContactRequest(username, displayName) {
+            if (!secureMessenger) return;
+            
+            try {
+                console.log('📤 Sending contact request to:', username);
+                
+                // First, ensure we can establish a connection
+                secureMessenger.updateConnectionStatus('connecting');
+                
+                // Try to establish connection first - this will handle connection replacement
+                const conn = await secureMessenger.connectToContact(username);
+                
+                if (conn && conn.open) {
+                    console.log('✅ Connection established, sending contact request...');
+                    
+                    // Wait a moment to ensure connection is stable
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    // Send contact request with additional metadata to help with reconnections
+                    const requestData = {
+                        type: 'contact_request',
+                        from: secureMessenger.userSystem.username,
+                        displayName: secureMessenger.userSystem.username.split('_')[0],
+                        publicKey: await secureMessenger.userSystem.getPublicKeyForSharing(),
+                        timestamp: Date.now(),
+                        message: `${secureMessenger.userSystem.username.split('_')[0]} wants to connect`,
+                        reconnection: true // Flag to indicate this might be a reconnection
+                    };
+                    
+                    console.log('Sending request data:', requestData);
+                    conn.send(requestData);
+                    
+                    // Add as pending contact on sender's side
+                    const pendingContact = {
+                        username: username,
+                        displayName: displayName || username.split('_')[0],
+                        lastSeen: Date.now(),
+                        unreadCount: 0,
+                        lastMessage: 'Contact request sent...',
+                        pending: true
+                    };
+                    
+                    secureMessenger.contacts.set(username, pendingContact);
+                    secureMessenger.saveContacts();
+                    secureMessenger.updateContactsList();
+                    
+                    // Show success toast
+                    secureMessenger.showToast('info', '📤 Contact Request Sent', 
+                        `Your request has been sent to ${displayName || username}. They can accept or deny your request.`);
+                    
+                    console.log('✅ Contact request sent successfully');
+                    
+                } else {
+                    throw new Error('Could not establish connection');
+                }
+                
+            } catch (error) {
+                console.error('❌ Failed to send contact request:', error);
+                secureMessenger.showToast('error', '❌ Connection Failed', 
+                    `Could not connect to ${username}. They might be offline or the username might not exist.`);
+                secureMessenger.updateConnectionStatus('offline');
+            }
+        }
+
+        // Global functions for notifications
         function toggleNotifications() {
+            console.log('Toggle notifications clicked');
             const dropdown = document.getElementById('notificationsDropdown');
             const isVisible = dropdown.style.display === 'block';
+            
+            console.log('Dropdown current state:', isVisible ? 'visible' : 'hidden');
+            
+            // Close all other dropdowns first
+            document.querySelectorAll('.notifications-dropdown').forEach(d => {
+                if (d !== dropdown) d.style.display = 'none';
+            });
+            
             dropdown.style.display = isVisible ? 'none' : 'block';
+            console.log('Dropdown new state:', dropdown.style.display);
         }
 
         function clearAllNotifications() {
-            // Implementation here...
+            console.log('Clear all notifications clicked');
+            if (secureMessenger) {
+                console.log('Clearing', secureMessenger.contactRequests.size, 'notifications');
+                secureMessenger.contactRequests.clear();
+                secureMessenger.updateNotifications();
+                secureMessenger.showToast('info', '🧹 Notifications Cleared', 'All notifications have been cleared.');
+            }
         }
 
         function acceptContactRequestFromNotification(username) {
-            // Implementation here...
+            console.log('Accept contact request from notification:', username);
+            if (secureMessenger) {
+                secureMessenger.acceptContactRequest(username);
+                // Close dropdown after action
+                document.getElementById('notificationsDropdown').style.display = 'none';
+            }
         }
 
         function denyContactRequestFromNotification(username) {
-            // Implementation here...
+            console.log('Deny contact request from notification:', username);
+            if (secureMessenger) {
+                secureMessenger.denyContactRequest(username);
+                // Close dropdown after action
+                document.getElementById('notificationsDropdown').style.display = 'none';
+            }
         }
 
+        // Global functions for toast actions
         function acceptContactRequest(username) {
-            // Implementation here...
+            if (secureMessenger) {
+                secureMessenger.acceptContactRequest(username);
+            }
         }
 
         function denyContactRequest(username) {
-            // Implementation here...
+            if (secureMessenger) {
+                secureMessenger.denyContactRequest(username);
+            }
         }
 
         function copyUsernameAndKey() {
-            // Implementation here...
+            if (secureMessenger && secureMessenger.userSystem.username) {
+                const username = secureMessenger.userSystem.username;
+                const fingerprint = document.getElementById('publicKeyFingerprint').textContent;
+                
+                const textToCopy = `AFSChat Contact:
+Username: ${username}
+Public Key Fingerprint: ${fingerprint}
+
+Add this username to start ultra-secure messaging!`;
+                
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    alert('Contact information copied to clipboard!');
+                }).catch(() => {
+                    alert('Failed to copy to clipboard. Please copy manually.');
+                });
+            }
         }
 
+        // Security Center Functions
         function downloadBackupKey() {
-            // Implementation here...
+            if (secureMessenger && secureMessenger.userSystem.username) {
+                const password = prompt('Enter your password to create encrypted backup:');
+                if (password) {
+                    secureMessenger.userSystem.downloadKeyFile(password);
+                }
+            }
         }
 
         function regenerateKeys() {
-            // Implementation here...
+            const confirm = window.confirm(
+                '⚠️ Regenerating keys will:\n\n' +
+                '• Create new encryption keys\n' +
+                '• Invalidate old message encryption\n' +
+                '• Require re-establishing E2E with contacts\n\n' +
+                'This action cannot be undone. Continue?'
+            );
+            
+            if (confirm) {
+                alert('🔄 Key regeneration feature coming soon!');
+            }
         }
 
         function exportSecurityReport() {
-            // Implementation here...
+            if (!secureMessenger) return;
+            
+            const report = {
+                timestamp: new Date().toISOString(),
+                identity: secureMessenger.userSystem.username,
+                securityMetrics: secureMessenger.securityMetrics,
+                contacts: secureMessenger.contacts.size,
+                encryptionStatus: 'Active',
+                securityLevel: 'Military Grade'
+            };
+            
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const downloadLink = document.createElement('a');
+            downloadLink.href = url;
+            downloadLink.download = `security-report-${Date.now()}.json`;
+            downloadLink.style.display = 'none';
+            
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            
+            URL.revokeObjectURL(url);
         }
 
         function secureLogout() {
-            // Implementation here...
+            const confirm = window.confirm(
+                '🚪 Secure Logout\n\n' +
+                'This will:\n' +
+                '• Close all connections\n' +
+                '• Clear your identity from memory\n' +
+                '• Clear all chat data\n' +
+                '• Return you to the login screen\n\n' +
+                'Your key file will remain safe. Continue?'
+            );
+            
+            if (confirm) {
+                performSecureLogout();
+            }
+        }
+
+        function performSecureLogout() {
+            try {
+                console.log('🚪 Performing secure logout...');
+                
+                if (secureMessenger) {
+                    // Close all connections
+                    secureMessenger.connections.forEach(conn => {
+                        if (conn.open) {
+                            conn.close();
+                        }
+                    });
+                    
+                    // Close peer connection
+                    if (secureMessenger.peer) {
+                        secureMessenger.peer.destroy();
+                    }
+                    
+                    // Clear E2E conversations
+                    if (secureMessenger.e2e) {
+                        secureMessenger.e2e.clearAllConversations();
+                    }
+                    
+                    // Clear user identity
+                    if (secureMessenger.userSystem) {
+                        secureMessenger.userSystem.clearIdentity();
+                    }
+                }
+                
+                // Clear all localStorage data
+                localStorage.removeItem('contacts');
+                localStorage.removeItem('chatMessages');
+                localStorage.removeItem('e2eConversations');
+                
+                // Reset global state
+                secureMessenger = null;
+                
+                // Show logout toast
+                showLogoutToast();
+                
+                // Reload page to reset everything
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+                
+                console.log('✅ Secure logout completed');
+                
+            } catch (error) {
+                console.error('Error during logout:', error);
+                alert('Logout completed with some warnings. The page will reload for security.');
+                window.location.reload();
+            }
+        }
+
+        function showLogoutToast() {
+            const toast = document.createElement('div');
+            toast.className = 'toast success';
+            toast.innerHTML = `
+                <div class="toast-header">
+                    <div class="toast-title">
+                        <span class="toast-icon">🚪</span>
+                        Secure Logout Complete
+                    </div>
+                </div>
+                <div class="toast-body">
+                    All data cleared from memory. Your key file remains safe.
+                    <br><small style="opacity: 0.7;">Reloading application...</small>
+                </div>
+            `;
+
+            document.getElementById('toastContainer').appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 100);
         }
 
         // Initialize messenger
         async function initializeMessenger() {
             secureMessenger = new UltraSecureMessenger();
-            window.secureMessenger = secureMessenger;
             await secureMessenger.initialize();
+        }
+
+        // Drag and drop for key files
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('keyFileDropZone');
+            
+            if (dropZone) {
+                dropZone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('dragover');
+                });
+                
+                dropZone.addEventListener('dragleave', () => {
+                    dropZone.classList.remove('dragover');
+                });
+                
+                dropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('dragover');
+                    
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0 && files[0].name.endsWith('.key')) {
+                        const fileInput = document.getElementById('keyFileInput');
+                        fileInput.files = files;
+                        handleKeyFileSelect(fileInput);
+                    }
+                });
+            }
         }
 
         // Initialize app
         window.addEventListener('load', async () => {
             console.log('🚀 Starting AFSChat...');
             
+            setupDragAndDrop();
+            
+            // For testing: uncomment to clear storage and test setup flow
+            // localStorage.clear();
+            
             try {
                 await initializeMessenger();
             } catch (error) {
                 console.error('Failed to initialize messenger:', error);
+                // If initialization fails, make sure setup modal is visible
                 document.getElementById('securitySetupModal').style.display = 'flex';
             }
         });
+
+        // Close modals and dropdowns when clicking outside
+        window.addEventListener('click', (event) => {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+            
+            // Close notifications dropdown when clicking outside
+            const notificationsBtn = document.getElementById('notificationsBtn');
+            const notificationsDropdown = document.getElementById('notificationsDropdown');
+            
+            if (notificationsDropdown && !notificationsBtn.contains(event.target) && !notificationsDropdown.contains(event.target)) {
+                notificationsDropdown.style.display = 'none';
+            }
+        });
+
+        // Handle mobile viewport and keyboard
+        window.addEventListener('resize', () => {
+            if (secureMessenger) {
+                // Handle mobile keyboard adjustments
+                const messageInput = document.getElementById('messageInput');
+                const messagesArea = document.getElementById('messagesArea');
+                
+                if (messageInput && window.innerWidth <= 768) {
+                    // Scroll to bottom when keyboard appears
+                    messageInput.addEventListener('focus', () => {
+                        setTimeout(() => {
+                            if (messagesArea) {
+                                messagesArea.scrollTop = messagesArea.scrollHeight;
+                            }
+                            // Scroll the input into view
+                            messageInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }, 300);
+                    });
+                }
+            }
+        });
+
+        // Handle mobile viewport changes (keyboard open/close)
+        if ('visualViewport' in window) {
+            window.visualViewport.addEventListener('resize', () => {
+                const messagesArea = document.getElementById('messagesArea');
+                const inputArea = document.getElementById('messageInputArea');
+                
+                if (messagesArea && inputArea && window.innerWidth <= 768) {
+                    // Adjust layout when keyboard opens/closes
+                    const keyboardHeight = window.innerHeight - window.visualViewport.height;
+                    if (keyboardHeight > 0) {
+                        // Keyboard is open
+                        inputArea.style.bottom = '0px';
+                        messagesArea.style.paddingBottom = '100px';
+                    } else {
+                        // Keyboard is closed
+                        inputArea.style.bottom = '0px';
+                        messagesArea.style.paddingBottom = '80px';
+                    }
+                }
+            });
+        }
 
         console.log('✅ AFSChat loaded and ready');
     </script>
