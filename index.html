@@ -2179,13 +2179,18 @@
                 const input = document.getElementById('messageInput');
                 const message = input.value.trim();
                 
-                if (!message || !this.currentChatUsername) return;
+                if (!message || !this.currentChatUsername) {
+                    console.warn('No message or chat username:', { message, currentChat: this.currentChatUsername });
+                    return;
+                }
 
                 try {
                     let encryptedMessage;
                     try {
                         encryptedMessage = await this.e2e.encryptMessage(this.currentChatUsername, message);
+                        console.log('✅ Message encrypted with E2E');
                     } catch (e) {
+                        console.warn('E2E encryption failed, using WebRTC only:', e);
                         encryptedMessage = {
                             type: 'webrtc_only_message',
                             text: message,
@@ -2205,10 +2210,14 @@
                         
                         input.value = '';
                         this.autoResize(input);
+                        
+                        console.log('✅ Message sent successfully');
+                    } else {
+                        throw new Error('No active connection');
                     }
                 } catch (error) {
                     console.error('Failed to send secure message:', error);
-                    alert('Failed to send message. The user might be offline.');
+                    this.showToast('error', '❌ Send Failed', 'Failed to send message. The user might be offline.');
                 }
             }
 
@@ -2666,7 +2675,9 @@
                     this.displayMessage(message);
                 }
                 
-                this.updateContactLastMessage(username, messageData.text);
+                // Safely update contact last message
+                const messageText = messageData.text || messageData.message || 'Message';
+                this.updateContactLastMessage(username, messageText);
             }
 
             displayMessage(message) {
@@ -3182,11 +3193,13 @@
 
             updateContactLastMessage(username, message) {
                 const contact = this.contacts.get(username);
-                if (contact) {
+                if (contact && message && typeof message === 'string') {
                     contact.lastMessage = message.length > 50 ? message.substring(0, 50) + '...' : message;
                     contact.lastSeen = Date.now();
                     this.saveContacts();
                     this.updateContactsList();
+                } else {
+                    console.warn('Invalid message or contact for updateContactLastMessage:', { username, message, contact });
                 }
             }
 
@@ -3939,23 +3952,49 @@ Add this username to start ultra-secure messaging!`;
             }
         });
 
-        // Handle mobile viewport
+        // Handle mobile viewport and keyboard
         window.addEventListener('resize', () => {
             if (secureMessenger) {
                 // Handle mobile keyboard adjustments
                 const messageInput = document.getElementById('messageInput');
+                const messagesArea = document.getElementById('messagesArea');
+                
                 if (messageInput && window.innerWidth <= 768) {
+                    // Scroll to bottom when keyboard appears
                     messageInput.addEventListener('focus', () => {
                         setTimeout(() => {
-                            const messagesArea = document.getElementById('messagesArea');
                             if (messagesArea) {
                                 messagesArea.scrollTop = messagesArea.scrollHeight;
                             }
+                            // Scroll the input into view
+                            messageInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                         }, 300);
                     });
                 }
             }
         });
+
+        // Handle mobile viewport changes (keyboard open/close)
+        if ('visualViewport' in window) {
+            window.visualViewport.addEventListener('resize', () => {
+                const messagesArea = document.getElementById('messagesArea');
+                const inputArea = document.getElementById('messageInputArea');
+                
+                if (messagesArea && inputArea && window.innerWidth <= 768) {
+                    // Adjust layout when keyboard opens/closes
+                    const keyboardHeight = window.innerHeight - window.visualViewport.height;
+                    if (keyboardHeight > 0) {
+                        // Keyboard is open
+                        inputArea.style.bottom = '0px';
+                        messagesArea.style.paddingBottom = '100px';
+                    } else {
+                        // Keyboard is closed
+                        inputArea.style.bottom = '0px';
+                        messagesArea.style.paddingBottom = '80px';
+                    }
+                }
+            });
+        }
 
         console.log('✅ Ultra Secure Messenger loaded and ready');
     </script>
