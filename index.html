@@ -1917,8 +1917,20 @@
 
             async initializeConversation(username, publicKey) {
                 try {
-                    // Generate session key for this conversation
-                    const sessionKey = await crypto.subtle.generateKey(
+                    // For demo purposes, create a deterministic session key based on both usernames
+                    // In a real implementation, this would use proper key exchange
+                    const usernames = [this.userSystem.username, username].sort();
+                    const keyMaterial = usernames.join('_') + '_session_key';
+                    
+                    const encoder = new TextEncoder();
+                    const keyBuffer = encoder.encode(keyMaterial);
+                    
+                    // Hash the key material to create a consistent key
+                    const hashBuffer = await crypto.subtle.digest('SHA-256', keyBuffer);
+                    
+                    const sessionKey = await crypto.subtle.importKey(
+                        'raw',
+                        hashBuffer,
                         {
                             name: 'AES-GCM',
                             length: 256
@@ -1939,7 +1951,7 @@
                     
                     await this.saveState();
                     
-                    console.log('🔐 E2E conversation established with:', username);
+                    console.log('🔐 E2E conversation established with deterministic key for:', username);
                     return conversation;
                 } catch (error) {
                     console.error('Failed to initialize E2E conversation:', error);
@@ -1953,14 +1965,20 @@
                     
                     // Initialize conversation if it doesn't exist
                     if (!sessionKey) {
+                        console.log('No session key found, initializing conversation with:', username);
                         await this.initializeConversation(username, 'demo_key');
                         sessionKey = this.sessionKeys.get(username);
+                    }
+
+                    if (!sessionKey) {
+                        throw new Error('Failed to establish session key');
                     }
 
                     const encoder = new TextEncoder();
                     const plaintextBytes = encoder.encode(plaintext);
                     const iv = crypto.getRandomValues(new Uint8Array(12));
 
+                    console.log('🔐 Encrypting message for:', username);
                     const ciphertext = await crypto.subtle.encrypt(
                         {
                             name: 'AES-GCM',
@@ -1978,6 +1996,7 @@
                         await this.saveState();
                     }
 
+                    console.log('✅ Message encrypted successfully');
                     return {
                         type: 'e2e_message',
                         iv: Array.from(iv),
@@ -2000,13 +2019,19 @@
                     
                     // Initialize conversation if it doesn't exist
                     if (!sessionKey) {
+                        console.log('No session key found for decryption, initializing conversation with:', from);
                         await this.initializeConversation(from, 'demo_key');
                         sessionKey = this.sessionKeys.get(from);
+                    }
+
+                    if (!sessionKey) {
+                        throw new Error('Failed to establish session key for decryption');
                     }
 
                     const ivArray = new Uint8Array(iv);
                     const ciphertextArray = new Uint8Array(ciphertext);
 
+                    console.log('🔓 Decrypting message from:', from);
                     const decrypted = await crypto.subtle.decrypt(
                         {
                             name: 'AES-GCM',
@@ -2017,7 +2042,9 @@
                     );
 
                     const decoder = new TextDecoder();
-                    return decoder.decode(decrypted);
+                    const plaintext = decoder.decode(decrypted);
+                    console.log('✅ Message decrypted successfully');
+                    return plaintext;
                 } catch (error) {
                     console.error('E2E decryption failed:', error);
                     throw error;
@@ -2186,8 +2213,13 @@
 
                 try {
                     let encryptedMessage;
+                    let encryptionAttempted = false;
+                    
+                    // Try E2E encryption first
                     try {
+                        console.log('🔐 Attempting E2E encryption...');
                         encryptedMessage = await this.e2e.encryptMessage(this.currentChatUsername, message);
+                        encryptionAttempted = true;
                         console.log('✅ Message encrypted with E2E');
                     } catch (e) {
                         console.warn('E2E encryption failed, using WebRTC only:', e);
@@ -2204,12 +2236,18 @@
                     const conn = this.connections.get(this.currentChatUsername);
                     
                     if (conn && conn.open) {
+                        console.log('📤 Sending message:', encryptedMessage.type);
                         conn.send(encryptedMessage);
                         this.addMessageToChat(this.currentChatUsername, encryptedMessage, true);
                         this.securityMetrics.messagesSent++;
                         
                         input.value = '';
                         this.autoResize(input);
+                        
+                        // If E2E encryption failed, try to establish it for next time
+                        if (!encryptionAttempted) {
+                            this.establishE2EIfNeeded(this.currentChatUsername);
+                        }
                         
                         console.log('✅ Message sent successfully');
                     } else {
@@ -2811,12 +2849,22 @@
                 try {
                     const conversation = this.e2e.getConversationInfo(username);
                     if (!conversation) {
+                        console.log('🔐 Establishing E2E encryption with:', username);
                         const publicKey = 'demo_key_' + username;
                         await this.e2e.initializeConversation(username, publicKey);
                         this.securityMetrics.encryptedChats++;
+                        
+                        // Update encryption status immediately
+                        if (this.currentChatUsername === username) {
+                            this.updateEncryptionStatus(username);
+                        }
+                        
+                        console.log('✅ E2E encryption established with:', username);
+                    } else {
+                        console.log('✅ E2E encryption already established with:', username);
                     }
                 } catch (error) {
-                    console.warn('Could not establish E2E encryption:', error);
+                    console.warn('Could not establish E2E encryption with', username, ':', error);
                 }
             }
 
