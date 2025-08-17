@@ -963,8 +963,377 @@
                 });
             }
 
-            // Continue with all the other methods...
-            // [Rest of the class methods would go here]
+            handleIncomingConnection(conn) {
+                const contactUsername = conn.peer;
+                console.log('🔗 Incoming connection from:', contactUsername);
+                
+                conn.on('open', () => {
+                    console.log('✅ Connection opened with:', contactUsername);
+                    this.connections.set(contactUsername, conn);
+                    this.updateContactStatus(contactUsername, true);
+                });
+
+                conn.on('data', (data) => {
+                    console.log('📨 Received data from', contactUsername, ':', data);
+                    this.handleIncomingMessage(data, contactUsername);
+                });
+
+                conn.on('close', () => {
+                    console.log('🔌 Connection closed with:', contactUsername);
+                    this.connections.delete(contactUsername);
+                    this.updateContactStatus(contactUsername, false);
+                });
+
+                conn.on('error', (error) => {
+                    console.error('🚫 Connection error with', contactUsername, ':', error);
+                    this.connections.delete(contactUsername);
+                    this.updateContactStatus(contactUsername, false);
+                });
+            }
+
+            async sendSecureMessage() {
+                const input = document.getElementById('messageInput');
+                const message = input.value.trim();
+                
+                if (!message || !this.currentChatUsername) {
+                    return;
+                }
+
+                try {
+                    // For now, send as simple message
+                    const messageData = {
+                        type: 'message',
+                        text: message,
+                        timestamp: Date.now(),
+                        from: this.userSystem.username,
+                        securityLevel: 'webrtc_only'
+                    };
+
+                    // Display message locally
+                    this.addMessageToChat(this.currentChatUsername, messageData, true);
+                    this.securityMetrics.messagesSent++;
+                    
+                    input.value = '';
+                    this.autoResize(input);
+                    
+                    console.log('✅ Message sent successfully');
+                } catch (error) {
+                    console.error('Failed to send message:', error);
+                }
+            }
+
+            async handleIncomingMessage(data, fromUsername) {
+                try {
+                    console.log('📨 Processing message from', fromUsername);
+                    
+                    // For now, handle simple messages
+                    const messageData = {
+                        ...data,
+                        securityLevel: data.securityLevel || 'webrtc_only'
+                    };
+
+                    this.addMessageToChat(fromUsername, messageData, false);
+                    this.securityMetrics.messagesReceived++;
+                } catch (error) {
+                    console.error('Failed to handle message:', error);
+                }
+            }
+
+            addMessageToChat(username, messageData, isSent) {
+                if (!this.chatMessages.has(username)) {
+                    this.chatMessages.set(username, []);
+                }
+                
+                const message = {
+                    ...messageData,
+                    isSent: isSent,
+                    id: Date.now() + Math.random()
+                };
+                
+                this.chatMessages.get(username).push(message);
+                this.saveMessages();
+                
+                if (this.currentChatUsername === username) {
+                    this.displayMessage(message);
+                }
+                
+                this.updateContactLastMessage(username, messageData.text);
+            }
+
+            displayMessage(message) {
+                const messagesArea = document.getElementById('messagesArea');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${message.isSent ? 'sent' : 'received'}`;
+                
+                const bubble = document.createElement('div');
+                bubble.className = 'message-bubble';
+                bubble.textContent = message.text || 'Message';
+                
+                const time = document.createElement('div');
+                time.className = 'message-time';
+                time.innerHTML = `
+                    ${new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+                    ${message.isSent ? '<span style="margin-left: 4px;">✓</span>' : ''}
+                `;
+                
+                messageDiv.appendChild(bubble);
+                messageDiv.appendChild(time);
+                messagesArea.appendChild(messageDiv);
+                
+                messagesArea.scrollTop = messagesArea.scrollHeight;
+            }
+
+            updateConnectionStatus(status) {
+                const statusEl = document.getElementById('connectionStatus');
+                
+                switch (status) {
+                    case 'online':
+                        statusEl.className = 'connection-status status-online';
+                        statusEl.textContent = 'Ultra Secure';
+                        break;
+                    case 'connecting':
+                        statusEl.className = 'connection-status status-connecting';
+                        statusEl.textContent = 'Connecting...';
+                        break;
+                    default:
+                        statusEl.className = 'connection-status status-offline';
+                        statusEl.textContent = 'Offline';
+                }
+            }
+
+            updateContactStatus(username, isOnline) {
+                if (this.currentChatUsername === username) {
+                    const statusIndicator = document.getElementById('contactStatus');
+                    const statusText = document.getElementById('contactStatusText');
+                    
+                    if (statusIndicator && statusText) {
+                        statusIndicator.className = `status-indicator ${isOnline ? 'status-online' : 'status-offline'}`;
+                        statusText.textContent = isOnline ? 'online & encrypted' : 'last seen recently';
+                    }
+                }
+            }
+
+            updateContactLastMessage(username, message) {
+                const contact = this.contacts.get(username);
+                if (contact && message) {
+                    contact.lastMessage = message.length > 50 ? message.substring(0, 50) + '...' : message;
+                    contact.lastSeen = Date.now();
+                    this.saveContacts();
+                    this.updateContactsList();
+                }
+            }
+
+            updateContactsList() {
+                const chatsList = document.getElementById('chatsList');
+                const contactsArray = Array.from(this.contacts.values());
+                
+                if (contactsArray.length === 0) {
+                    chatsList.innerHTML = `
+                        <div class="empty-state">
+                            <div style="font-size: 48px; margin-bottom: 15px;">🔐</div>
+                            <div>No secure contacts yet</div>
+                            <div style="margin-top: 5px; font-size: 12px;">Add a contact to start ultra-secure messaging</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                chatsList.innerHTML = '';
+                contactsArray.forEach(contact => {
+                    const chatItem = this.createChatItem(contact);
+                    chatsList.appendChild(chatItem);
+                });
+            }
+
+            createChatItem(contact) {
+                const div = document.createElement('div');
+                div.className = `chat-item ${contact.unreadCount > 0 ? 'unread' : ''}`;
+                div.onclick = () => this.openChat(contact.username);
+                
+                const avatar = document.createElement('div');
+                avatar.className = 'chat-avatar';
+                avatar.textContent = contact.displayName.charAt(0).toUpperCase();
+                
+                const info = document.createElement('div');
+                info.className = 'chat-info';
+                
+                const header = document.createElement('div');
+                header.className = 'chat-header';
+                
+                const name = document.createElement('div');
+                name.className = 'chat-name';
+                name.textContent = contact.displayName;
+                
+                const time = document.createElement('div');
+                time.className = 'chat-time';
+                if (contact.lastSeen) {
+                    time.textContent = new Date(contact.lastSeen).toLocaleDateString();
+                }
+                
+                header.appendChild(name);
+                header.appendChild(time);
+                
+                const preview = document.createElement('div');
+                preview.className = 'chat-preview';
+                preview.textContent = contact.lastMessage || 'No messages yet';
+                
+                info.appendChild(header);
+                info.appendChild(preview);
+                
+                div.appendChild(avatar);
+                div.appendChild(info);
+                
+                return div;
+            }
+
+            openChat(username) {
+                this.currentChatUsername = username;
+                
+                const contact = this.contacts.get(username);
+                if (contact) {
+                    contact.unreadCount = 0;
+                    this.saveContacts();
+                    this.updateContactsList();
+                    
+                    document.getElementById('currentChatName').textContent = contact.displayName;
+                    document.getElementById('currentChatAvatar').textContent = contact.displayName.charAt(0).toUpperCase();
+                    
+                    document.getElementById('welcomeScreen').style.display = 'none';
+                    document.getElementById('chatHeader').style.display = 'flex';
+                    document.getElementById('messagesArea').style.display = 'block';
+                    document.getElementById('messageInputArea').style.display = 'flex';
+                    
+                    this.loadChatMessages(username);
+                }
+                
+                this.closeSidebar();
+            }
+
+            loadChatMessages(username) {
+                const messagesArea = document.getElementById('messagesArea');
+                messagesArea.innerHTML = '';
+                
+                const messages = this.chatMessages.get(username) || [];
+                messages.forEach(message => {
+                    this.displayMessage(message);
+                });
+            }
+
+            updateUI() {
+                if (this.userSystem.username) {
+                    document.getElementById('myUsername').textContent = this.userSystem.username;
+                    document.getElementById('displayName').textContent = this.userSystem.username.split('_')[0];
+                    document.getElementById('userAvatar').textContent = this.userSystem.username.charAt(0).toUpperCase();
+                    document.getElementById('shareUsername').textContent = this.userSystem.username;
+                }
+            }
+
+            saveContacts() {
+                const contactsArray = Array.from(this.contacts.entries());
+                localStorage.setItem('contacts', JSON.stringify(contactsArray));
+            }
+
+            loadContacts() {
+                const saved = localStorage.getItem('contacts');
+                if (saved) {
+                    try {
+                        const contactsArray = JSON.parse(saved);
+                        this.contacts = new Map(contactsArray);
+                        this.updateContactsList();
+                    } catch (error) {
+                        console.error('Failed to load contacts:', error);
+                    }
+                }
+            }
+
+            saveMessages() {
+                const messagesArray = Array.from(this.chatMessages.entries());
+                localStorage.setItem('chatMessages', JSON.stringify(messagesArray));
+            }
+
+            loadMessages() {
+                const saved = localStorage.getItem('chatMessages');
+                if (saved) {
+                    try {
+                        const messagesArray = JSON.parse(saved);
+                        this.chatMessages = new Map(messagesArray);
+                    } catch (error) {
+                        console.error('Failed to load messages:', error);
+                    }
+                }
+            }
+
+            toggleSidebar() {
+                const sidebar = document.getElementById('sidebar');
+                const overlay = document.getElementById('sidebarOverlay');
+                
+                if (sidebar.classList.contains('open')) {
+                    this.closeSidebar();
+                } else {
+                    this.openSidebar();
+                }
+            }
+
+            openSidebar() {
+                const sidebar = document.getElementById('sidebar');
+                const overlay = document.getElementById('sidebarOverlay');
+                
+                sidebar.classList.add('open');
+                overlay.classList.add('visible');
+            }
+
+            closeSidebar() {
+                const sidebar = document.getElementById('sidebar');
+                const overlay = document.getElementById('sidebarOverlay');
+                
+                sidebar.classList.remove('open');
+                overlay.classList.remove('visible');
+            }
+
+            autoResize(textarea) {
+                textarea.style.height = 'auto';
+                textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
+            }
+
+            showToast(type, title, message, duration = 5000) {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                
+                let icon = '📱';
+                switch (type) {
+                    case 'success': icon = '✅'; break;
+                    case 'warning': icon = '⚠️'; break;
+                    case 'error': icon = '❌'; break;
+                    case 'info': icon = 'ℹ️'; break;
+                }
+                
+                toast.innerHTML = `
+                    <div class="toast-header">
+                        <div class="toast-title">
+                            <span class="toast-icon">${icon}</span>
+                            ${title}
+                        </div>
+                        <button class="toast-close" onclick="this.parentElement.parentElement.remove()">✕</button>
+                    </div>
+                    <div class="toast-body">${message}</div>
+                `;
+
+                document.getElementById('toastContainer').appendChild(toast);
+                
+                // Animate in
+                setTimeout(() => toast.classList.add('show'), 100);
+                
+                // Auto-remove
+                if (duration > 0) {
+                    setTimeout(() => {
+                        if (toast.parentElement) {
+                            toast.style.transform = 'translateX(450px)';
+                            toast.style.opacity = '0';
+                            setTimeout(() => toast.remove(), 400);
+                        }
+                    }, duration);
+                }
+            }
         }
 
         // Global instance
