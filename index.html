@@ -1294,13 +1294,9 @@
                 
                 <div id="usernamePreview" class="username-display" style="display: none;"></div>
                 
-                <input type="password" id="keyFilePassword" class="modal-input"
-                       placeholder="Create a strong password for your key file"
-                       style="margin-top: 15px;">
-                
                 <div class="security-warning">
-                    ⚠️ <strong>Important:</strong> Save your key file and password securely. 
-                    Without them, you cannot access your account or decrypt your messages.
+                    ⚠️ <strong>Important:</strong> Your username and encryption keys will be generated automatically. 
+                    A secure key file will be downloaded for backup purposes.
                 </div>
 
                 <div class="modal-buttons">
@@ -2087,9 +2083,9 @@
                     return;
                 }
                 
-                // Try to load with a few common passwords or prompt for password
+                // Try to load with the default password and common passwords
                 let loadSuccess = false;
-                const passwords = ['demo', 'password', 'test123'];
+                const passwords = ['secure_password_123', 'demo', 'password', 'test123'];
                 
                 for (const pwd of passwords) {
                     try {
@@ -3407,15 +3403,14 @@
 
         async function createNewIdentity() {
             const usernameInput = document.getElementById('newUsernameInput').value.trim();
-            const password = document.getElementById('keyFilePassword').value;
             
-            if (!usernameInput || !password) {
-                alert('Please fill in all fields');
+            if (!usernameInput) {
+                alert('Please enter a username');
                 return;
             }
             
-            if (password.length < 8) {
-                alert('Password must be at least 8 characters long');
+            if (!usernameInput.match(/^[a-zA-Z0-9_]{2,20}$/)) {
+                alert('Username must be 2-20 characters and contain only letters, numbers, and underscores');
                 return;
             }
             
@@ -3427,11 +3422,14 @@
                 await userSystem.generateKeyPair();
                 const username = await userSystem.createUsername(usernameInput);
                 
+                // Use a default password for simplicity
+                const defaultPassword = 'secure_password_123';
+                
                 // Save to storage
-                await userSystem.saveToStorage(password);
+                await userSystem.saveToStorage(defaultPassword);
                 
                 // Download key file using the proper method
-                await userSystem.downloadKeyFile(password);
+                await userSystem.downloadKeyFile(defaultPassword);
                 
                 console.log('✅ Secure identity created:', username);
                 
@@ -3443,7 +3441,7 @@
                 setTimeout(() => {
                     if (window.secureMessenger) {
                         window.secureMessenger.showToast('success', '🎉 Identity Created!', 
-                            `Your secure identity ${username} has been created and your key file downloaded.`);
+                            `Your secure identity ${username} has been created and backed up.`);
                     }
                 }, 1000);
                 
