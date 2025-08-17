@@ -2146,21 +2146,30 @@
 
             handleIncomingConnection(conn) {
                 const contactUsername = conn.peer;
+                console.log('🔗 Incoming connection from:', contactUsername);
                 
                 conn.on('open', () => {
+                    console.log('✅ Connection opened with:', contactUsername);
                     this.connections.set(contactUsername, conn);
                     this.updateContactStatus(contactUsername, true);
                     
-                    if (!this.contacts.has(contactUsername)) {
-                        this.autoAddContact(contactUsername);
-                    }
+                    // Don't auto-add as contact anymore - wait for proper contact request
+                    console.log('Connection established, waiting for contact request...');
                 });
 
                 conn.on('data', (data) => {
+                    console.log('📨 Received data from', contactUsername, ':', data);
                     this.handleIncomingMessage(data, contactUsername);
                 });
 
                 conn.on('close', () => {
+                    console.log('🔌 Connection closed with:', contactUsername);
+                    this.connections.delete(contactUsername);
+                    this.updateContactStatus(contactUsername, false);
+                });
+
+                conn.on('error', (error) => {
+                    console.error('🚫 Connection error with', contactUsername, ':', error);
                     this.connections.delete(contactUsername);
                     this.updateContactStatus(contactUsername, false);
                 });
@@ -2205,12 +2214,22 @@
 
             async handleIncomingMessage(data, fromUsername) {
                 try {
+                    console.log('📨 Processing message from', fromUsername, 'type:', data.type);
+                    
                     // Handle different message types
                     if (data.type === 'contact_request') {
+                        console.log('📩 Processing contact request from:', fromUsername);
                         this.handleContactRequest(data, fromUsername);
                         return;
                     } else if (data.type === 'contact_request_response') {
+                        console.log('📬 Processing contact request response from:', fromUsername);
                         this.handleContactRequestResponse(data, fromUsername);
+                        return;
+                    }
+
+                    // Only process regular messages if they are already a contact
+                    if (!this.contacts.has(fromUsername)) {
+                        console.log('⚠️ Received message from non-contact:', fromUsername, 'ignoring...');
                         return;
                     }
 
@@ -2222,7 +2241,8 @@
                             plaintext = await this.e2e.decryptMessage(data);
                             securityLevel = 'maximum';
                         } catch (e) {
-                            plaintext = data.text;
+                            console.warn('Failed to decrypt E2E message:', e);
+                            plaintext = data.text || 'Failed to decrypt message';
                             securityLevel = 'webrtc_only';
                         }
                     }
@@ -2291,15 +2311,28 @@
                 console.log('📬 Contact request response from:', fromUsername, data.accepted ? 'ACCEPTED' : 'DENIED');
                 
                 if (data.accepted) {
-                    // Add contact if accepted
-                    if (!this.contacts.has(fromUsername)) {
+                    // Remove pending status and add as proper contact
+                    const existingContact = this.contacts.get(fromUsername);
+                    if (existingContact) {
+                        existingContact.pending = false;
+                        existingContact.lastMessage = null;
+                        existingContact.publicKey = data.publicKey;
+                        this.contacts.set(fromUsername, existingContact);
+                        this.saveContacts();
+                        this.updateContactsList();
+                        
+                        // Establish E2E encryption
+                        this.establishE2EIfNeeded(fromUsername);
+                    } else {
+                        // Create new contact if doesn't exist
                         const contact = {
                             username: fromUsername,
                             displayName: data.displayName || fromUsername.split('_')[0],
                             lastSeen: Date.now(),
                             unreadCount: 0,
                             lastMessage: null,
-                            publicKey: data.publicKey
+                            publicKey: data.publicKey,
+                            pending: false
                         };
                         
                         this.contacts.set(fromUsername, contact);
@@ -2313,6 +2346,11 @@
                     this.showToast('success', '🤝 Contact Request Accepted!', 
                         `${data.displayName || fromUsername} accepted your request. You can now chat securely!`);
                 } else {
+                    // Remove the pending contact since request was denied
+                    this.contacts.delete(fromUsername);
+                    this.saveContacts();
+                    this.updateContactsList();
+                    
                     this.showToast('warning', '❌ Contact Request Denied', 
                         `${data.displayName || fromUsername} denied your contact request.`);
                 }
@@ -2379,7 +2417,8 @@
                     lastSeen: Date.now(),
                     unreadCount: 0,
                     lastMessage: null,
-                    publicKey: request.publicKey
+                    publicKey: request.publicKey,
+                    pending: false // Important: not pending anymore
                 };
                 
                 this.contacts.set(username, contact);
@@ -2395,13 +2434,18 @@
                 try {
                     const conn = this.connections.get(username);
                     if (conn && conn.open) {
-                        conn.send({
+                        const responseData = {
                             type: 'contact_request_response',
                             accepted: true,
                             displayName: this.userSystem.username.split('_')[0],
                             publicKey: await this.userSystem.getPublicKeyForSharing(),
                             timestamp: Date.now()
-                        });
+                        };
+                        
+                        console.log('📤 Sending acceptance response:', responseData);
+                        conn.send(responseData);
+                    } else {
+                        console.warn('No active connection to send acceptance response');
                     }
                 } catch (error) {
                     console.error('Failed to send acceptance:', error);
@@ -2434,12 +2478,15 @@
                 try {
                     const conn = this.connections.get(username);
                     if (conn && conn.open) {
-                        conn.send({
+                        const responseData = {
                             type: 'contact_request_response',
                             accepted: false,
                             displayName: this.userSystem.username.split('_')[0],
                             timestamp: Date.now()
-                        });
+                        };
+                        
+                        console.log('📤 Sending denial response:', responseData);
+                        conn.send(responseData);
                     }
                 } catch (error) {
                     console.error('Failed to send denial:', error);
@@ -2670,21 +2717,44 @@
 
             async connectToContact(username) {
                 if (this.connections.has(username)) {
-                    return this.connections.get(username);
+                    const existingConn = this.connections.get(username);
+                    if (existingConn.open) {
+                        console.log('✅ Using existing connection to:', username);
+                        return existingConn;
+                    } else {
+                        // Remove stale connection
+                        this.connections.delete(username);
+                    }
                 }
 
+                console.log('🔗 Creating new connection to:', username);
                 const conn = this.peer.connect(username);
                 
                 return new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        console.error('⏰ Connection timeout to:', username);
+                        reject(new Error('Connection timeout'));
+                    }, 10000); // 10 second timeout
+                    
                     conn.on('open', () => {
+                        clearTimeout(timeout);
+                        console.log('✅ Connection established to:', username);
                         this.connections.set(username, conn);
                         this.updateContactStatus(username, true);
                         
                         conn.on('data', (data) => {
+                            console.log('📨 Received data in connectToContact from', username, ':', data);
                             this.handleIncomingMessage(data, username);
                         });
                         
                         conn.on('close', () => {
+                            console.log('🔌 Connection closed in connectToContact with:', username);
+                            this.connections.delete(username);
+                            this.updateContactStatus(username, false);
+                        });
+                        
+                        conn.on('error', (error) => {
+                            console.error('🚫 Connection error in connectToContact with', username, ':', error);
                             this.connections.delete(username);
                             this.updateContactStatus(username, false);
                         });
@@ -2692,7 +2762,11 @@
                         resolve(conn);
                     });
                     
-                    conn.on('error', reject);
+                    conn.on('error', (error) => {
+                        clearTimeout(timeout);
+                        console.error('🚫 Failed to connect to:', username, error);
+                        reject(error);
+                    });
                 });
             }
 
@@ -3524,23 +3598,29 @@
             try {
                 console.log('📤 Sending contact request to:', username);
                 
+                // First, ensure we can establish a connection
+                secureMessenger.updateConnectionStatus('connecting');
+                
                 // Try to establish connection first
-                await secureMessenger.connectToContact(username);
-                const conn = secureMessenger.connections.get(username);
+                const conn = await secureMessenger.connectToContact(username);
                 
                 if (conn && conn.open) {
+                    console.log('✅ Connection established, sending contact request...');
+                    
                     // Send contact request
                     const requestData = {
                         type: 'contact_request',
                         from: secureMessenger.userSystem.username,
                         displayName: secureMessenger.userSystem.username.split('_')[0],
                         publicKey: await secureMessenger.userSystem.getPublicKeyForSharing(),
-                        timestamp: Date.now()
+                        timestamp: Date.now(),
+                        message: `${secureMessenger.userSystem.username.split('_')[0]} wants to connect`
                     };
                     
+                    console.log('Sending request data:', requestData);
                     conn.send(requestData);
                     
-                    // Add as pending contact
+                    // Add as pending contact on sender's side
                     const pendingContact = {
                         username: username,
                         displayName: displayName || username.split('_')[0],
@@ -3568,6 +3648,7 @@
                 console.error('❌ Failed to send contact request:', error);
                 secureMessenger.showToast('error', '❌ Connection Failed', 
                     `Could not connect to ${username}. They might be offline or the username might not exist.`);
+                secureMessenger.updateConnectionStatus('offline');
             }
         }
 
