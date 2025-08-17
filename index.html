@@ -1656,9 +1656,22 @@
                 
                 <div id="usernamePreview" class="username-display" style="display: none;"></div>
                 
+                <input type="password" id="newPasswordInput" class="modal-input"
+                       placeholder="Create a strong password (min 8 characters)" 
+                       minlength="8" oninput="validatePassword()">
+                
+                <input type="password" id="confirmPasswordInput" class="modal-input"
+                       placeholder="Confirm your password" 
+                       minlength="8" oninput="validatePassword()">
+                
+                <div id="passwordStrength" style="margin: 10px 0; font-size: 12px;"></div>
+                
                 <div class="security-warning">
                     🔒 <strong>Signal Protocol:</strong> Your identity will use Curve25519 keys with X3DH key agreement 
                     and Double Ratchet for perfect forward secrecy and post-compromise security.
+                    <br><br>
+                    🔑 <strong>Password Security:</strong> Choose a strong password - it protects your entire Signal identity.
+                    This password will be required to access your account and decrypt your backup file.
                 </div>
 
                 <div class="modal-buttons">
@@ -3162,6 +3175,7 @@
                             }
                         } catch (error) {
                             console.error('Failed with user password:', error);
+                            alert('Invalid password. Please try again or create a new identity.');
                         }
                     }
                 }
@@ -4691,13 +4705,12 @@
         function previewNewUsername() {
             const input = document.getElementById('newUsernameInput');
             const preview = document.getElementById('usernamePreview');
-            const button = document.getElementById('createIdentityBtn');
             
             const inputValue = input.value.trim();
             
             if (!inputValue || !inputValue.match(/^[a-zA-Z0-9_]{2,20}$/)) {
                 preview.style.display = 'none';
-                button.disabled = true;
+                validateForm();
                 return;
             }
             
@@ -4706,14 +4719,98 @@
             
             preview.textContent = `Your Signal username: ${fullUsername}`;
             preview.style.display = 'block';
-            button.disabled = false;
+            validateForm();
+        }
+
+        function validatePassword() {
+            const password = document.getElementById('newPasswordInput').value;
+            const confirmPassword = document.getElementById('confirmPasswordInput').value;
+            const strengthDiv = document.getElementById('passwordStrength');
+            
+            let strength = 0;
+            let strengthText = '';
+            let strengthColor = '#d1242f';
+            
+            if (password.length >= 8) strength++;
+            if (password.match(/[a-z]/)) strength++;
+            if (password.match(/[A-Z]/)) strength++;
+            if (password.match(/[0-9]/)) strength++;
+            if (password.match(/[^a-zA-Z0-9]/)) strength++;
+            
+            switch (strength) {
+                case 0:
+                case 1:
+                    strengthText = '🔴 Very Weak - Add more characters and variety';
+                    strengthColor = '#d1242f';
+                    break;
+                case 2:
+                    strengthText = '🟠 Weak - Add uppercase, numbers, or symbols';
+                    strengthColor = '#fd7e14';
+                    break;
+                case 3:
+                    strengthText = '🟡 Fair - Consider adding more variety';
+                    strengthColor = '#ffb800';
+                    break;
+                case 4:
+                    strengthText = '🟢 Good - Strong password!';
+                    strengthColor = '#238636';
+                    break;
+                case 5:
+                    strengthText = '🟢 Excellent - Very strong password!';
+                    strengthColor = '#238636';
+                    break;
+            }
+            
+            if (password.length > 0) {
+                strengthDiv.innerHTML = `Password Strength: ${strengthText}`;
+                strengthDiv.style.color = strengthColor;
+            } else {
+                strengthDiv.innerHTML = '';
+            }
+            
+            // Check password confirmation
+            if (confirmPassword.length > 0) {
+                if (password !== confirmPassword) {
+                    strengthDiv.innerHTML += '<br>🔴 Passwords do not match';
+                    strengthDiv.style.color = '#d1242f';
+                } else if (password.length >= 8) {
+                    strengthDiv.innerHTML += '<br>✅ Passwords match';
+                }
+            }
+            
+            validateForm();
+        }
+
+        function validateForm() {
+            const username = document.getElementById('newUsernameInput').value.trim();
+            const password = document.getElementById('newPasswordInput').value;
+            const confirmPassword = document.getElementById('confirmPasswordInput').value;
+            const button = document.getElementById('createIdentityBtn');
+            
+            const validUsername = username.match(/^[a-zA-Z0-9_]{2,20}$/);
+            const validPassword = password.length >= 8;
+            const passwordsMatch = password === confirmPassword;
+            
+            button.disabled = !(validUsername && validPassword && passwordsMatch);
         }
 
         async function createNewIdentity() {
             const usernameInput = document.getElementById('newUsernameInput').value.trim();
+            const password = document.getElementById('newPasswordInput').value;
+            const confirmPassword = document.getElementById('confirmPasswordInput').value;
             
             if (!usernameInput || !usernameInput.match(/^[a-zA-Z0-9_]{2,20}$/)) {
                 alert('Username must be 2-20 characters and contain only letters, numbers, and underscores');
+                return;
+            }
+            
+            if (password.length < 8) {
+                alert('Password must be at least 8 characters long');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                alert('Passwords do not match');
                 return;
             }
             
@@ -4724,9 +4821,9 @@
                 await signalIdentity.generateKeyPair();
                 const username = await signalIdentity.createUsername(usernameInput);
                 
-                const defaultPassword = 'secure_password_123';
-                await signalIdentity.saveToStorage(defaultPassword);
-                await signalIdentity.downloadKeyFile(defaultPassword);
+                // Use the user's custom password
+                await signalIdentity.saveToStorage(password);
+                await signalIdentity.downloadKeyFile(password);
                 
                 console.log('✅ Signal identity created:', username);
                 
@@ -4736,7 +4833,7 @@
                 setTimeout(() => {
                     if (window.secureMessenger) {
                         window.secureMessenger.showToast('success', '🎉 Signal Identity Created!', 
-                            `Your Signal Protocol identity ${username} has been created with perfect forward secrecy.`);
+                            `Your Signal Protocol identity ${username} has been created with your custom password.`);
                     }
                 }, 1000);
                 
